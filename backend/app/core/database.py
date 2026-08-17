@@ -1,17 +1,22 @@
+import os
 from typing import Generator
-# pyrefly: ignore [missing-import]
 from sqlalchemy import create_engine
-# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from app.core.config import settings
 
-# Configure engine connection parameters based on database driver (SQLite vs PostgreSQL)
+# Determine database URL with Vercel serverless writable /tmp directory fallback
+db_url = settings.DATABASE_URL
+
+# On Vercel serverless environments, root app directory is read-only; use /tmp directory
+if os.environ.get("VERCEL") or (db_url == "sqlite:///./habit_tracker.db" and os.name != "nt"):
+    db_url = "sqlite:////tmp/habit_tracker.db"
+
 engine_kwargs = {}
-if settings.DATABASE_URL.startswith("sqlite"):
+if db_url.startswith("sqlite"):
     engine_kwargs["connect_args"] = {"check_same_thread": False}
 
 engine = create_engine(
-    settings.DATABASE_URL,
+    db_url,
     pool_pre_ping=True,
     **engine_kwargs
 )

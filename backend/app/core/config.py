@@ -15,8 +15,8 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     ALGORITHM: str = "HS256"
 
-    # Database connection URL (defaults to SQLite local fallback)
-    DATABASE_URL: str = "sqlite:///./habit_tracker.db"
+    # Database connection URL (defaults to writable /tmp/habit_tracker.db on serverless Linux or ./habit_tracker.db on Windows)
+    DATABASE_URL: str = "sqlite:////tmp/habit_tracker.db" if os.name != "nt" else "sqlite:///./habit_tracker.db"
 
     # CORS Allowed Origins
     CORS_ORIGINS: Union[List[str], str] = [
