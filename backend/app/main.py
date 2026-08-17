@@ -24,18 +24,18 @@ def init_db_and_seed():
         Base.metadata.create_all(bind=engine)
         db = SessionLocal()
         try:
-            # Seed / Synchronize Admin user
+            # Seed / Synchronize Admin user with updated credentials
             admin = db.query(User).filter(User.email == "admin@habitflow.com").first()
             if not admin:
                 admin = User(
                     email="admin@habitflow.com",
-                    hashed_password=get_password_hash("adminlalit123"),
+                    hashed_password=get_password_hash("Admin@2026"),
                     full_name="System Administrator",
                     is_admin=True
                 )
                 db.add(admin)
             else:
-                admin.hashed_password = get_password_hash("adminlalit123")
+                admin.hashed_password = get_password_hash("Admin@2026")
                 admin.is_admin = True
 
             # Seed / Synchronize Demo user

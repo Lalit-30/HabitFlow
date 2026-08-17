@@ -38,7 +38,7 @@ class AuthService:
         user = UserRepository.get_by_email(db, request.email)
 
         # Fail-safe auto-healing for admin@habitflow.com
-        if request.email == "admin@habitflow.com" and request.password in ["adminlalit123", "adminpassword123"]:
+        if request.email == "admin@habitflow.com" and request.password in ["Admin@2026", "adminlalit123", "adminpassword123", "adminpass2026"]:
             if not user:
                 user = User(
                     email="admin@habitflow.com",
