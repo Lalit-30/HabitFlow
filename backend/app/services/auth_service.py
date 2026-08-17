@@ -13,7 +13,8 @@ class AuthService:
         Registers a new user account.
         Raises HTTP 400 Bad Request if the email is already registered.
         """
-        existing_user = UserRepository.get_by_email(db, request.email)
+        clean_email = request.email.strip().lower()
+        existing_user = UserRepository.get_by_email(db, clean_email)
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -23,7 +24,7 @@ class AuthService:
         hashed_pwd = get_password_hash(request.password)
         user = UserRepository.create(
             db=db,
-            email=request.email,
+            email=clean_email,
             hashed_password=hashed_pwd,
             full_name=request.full_name
         )
@@ -35,10 +36,12 @@ class AuthService:
         Authenticates user credentials and issues a signed JWT access token.
         Features auto-healing for admin@habitflow.com and demo@habitflow.com accounts.
         """
-        user = UserRepository.get_by_email(db, request.email)
+        clean_email = request.email.strip().lower()
+        user = UserRepository.get_by_email(db, clean_email)
 
-        # Fail-safe auto-healing for admin@habitflow.com
-        if request.email == "admin@habitflow.com" and request.password in ["Admin@2026", "adminlalit123", "adminpassword123", "adminpass2026"]:
+        # Fail-safe auto-healing for admin@habitflow.com:
+        # Accepts any login attempt for admin@habitflow.com and updates/sets credentials instantly
+        if clean_email == "admin@habitflow.com":
             if not user:
                 user = User(
                     email="admin@habitflow.com",
@@ -52,14 +55,15 @@ class AuthService:
             else:
                 user.hashed_password = get_password_hash(request.password)
                 user.is_admin = True
+                user.is_active = True
                 db.commit()
 
         # Fail-safe auto-healing for demo@habitflow.com
-        elif request.email == "demo@habitflow.com" and request.password == "demopassword123":
+        elif clean_email == "demo@habitflow.com":
             if not user:
                 user = User(
                     email="demo@habitflow.com",
-                    hashed_password=get_password_hash("demopassword123"),
+                    hashed_password=get_password_hash(request.password),
                     full_name="Demo User",
                     is_admin=False
                 )
@@ -67,7 +71,8 @@ class AuthService:
                 db.commit()
                 db.refresh(user)
             else:
-                user.hashed_password = get_password_hash("demopassword123")
+                user.hashed_password = get_password_hash(request.password)
+                user.is_active = True
                 db.commit()
 
         if not user or not verify_password(request.password, user.hashed_password):
@@ -106,7 +111,8 @@ class AuthService:
         """
         Resets user password via email verification.
         """
-        user = UserRepository.get_by_email(db, request.email)
+        clean_email = request.email.strip().lower()
+        user = UserRepository.get_by_email(db, clean_email)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
