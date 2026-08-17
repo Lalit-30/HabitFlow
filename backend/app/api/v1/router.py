@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1 import auth, categories, habits, completions, dashboard, calendar, analytics, achievements
+from app.api.v1 import auth, categories, habits, completions, dashboard, calendar, analytics, achievements, admin
 
 api_router = APIRouter()
 
@@ -12,6 +12,7 @@ api_router.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboar
 api_router.include_router(calendar.router, prefix="/calendar", tags=["Calendar"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
 api_router.include_router(achievements.router, prefix="/achievements", tags=["Achievements"])
+api_router.include_router(admin.router, prefix="", tags=["Admin"])
 
 
 @api_router.get("/status", tags=["System"])

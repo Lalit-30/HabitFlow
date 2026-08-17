@@ -10,6 +10,7 @@ import { CalendarView } from './pages/CalendarView';
 import { AnalyticsView } from './pages/AnalyticsView';
 import { AchievementsView } from './pages/AchievementsView';
 import { ProfileView } from './pages/ProfileView';
+import { AdminView } from './pages/AdminView';
 
 const ProtectedLayout: React.FC = () => {
   const { user, loading } = useAuth();
@@ -36,6 +37,26 @@ const ProtectedLayout: React.FC = () => {
   );
 };
 
+const ProtectedAdminRoute: React.FC = () => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-brand-500" />
+      </div>
+    );
+  }
+
+  const isAdmin = user?.is_admin || user?.email === 'admin@habitflow.com';
+
+  if (!user || !isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <AdminView />;
+};
+
 export const App: React.FC = () => {
   return (
     <AuthProvider>
@@ -51,6 +72,7 @@ export const App: React.FC = () => {
             <Route path="/analytics" element={<AnalyticsView />} />
             <Route path="/achievements" element={<AchievementsView />} />
             <Route path="/profile" element={<ProfileView />} />
+            <Route path="/admin" element={<ProtectedAdminRoute />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

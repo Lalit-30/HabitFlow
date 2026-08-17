@@ -9,12 +9,15 @@ import {
   User as UserIcon, 
   LogOut,
   Flame,
-  Zap
+  Zap,
+  ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const Sidebar: React.FC = () => {
   const { user, logout } = useAuth();
+
+  const isAdmin = user?.is_admin || user?.email === 'admin@habitflow.com';
 
   const navItems = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -24,6 +27,10 @@ export const Sidebar: React.FC = () => {
     { to: '/achievements', label: 'Achievements', icon: Trophy },
     { to: '/profile', label: 'Profile', icon: UserIcon },
   ];
+
+  if (isAdmin) {
+    navItems.push({ to: '/admin', label: 'Admin Panel', icon: ShieldCheck });
+  }
 
   return (
     <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-screen sticky top-0 z-30">

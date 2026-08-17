@@ -27,6 +27,29 @@ class UserProfileUpdateRequest(BaseModel):
     health_goal: Optional[str] = None
 
 
+class AdminUserCreateRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=6)
+    full_name: str = Field(..., min_length=2)
+    is_admin: bool = False
+    height: Optional[float] = None
+    weight: Optional[float] = None
+    health_goal: Optional[str] = None
+
+
+class AdminUserUpdateRequest(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    level: Optional[int] = Field(None, ge=1)
+    xp: Optional[int] = Field(None, ge=0)
+    is_active: Optional[bool] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
+    height: Optional[float] = None
+    weight: Optional[float] = None
+    health_goal: Optional[str] = None
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -40,6 +63,7 @@ class UserResponse(BaseModel):
     xp: int
     level: int
     is_active: bool
+    is_admin: bool = False
     avatar_url: Optional[str] = None
     age: Optional[int] = None
     dob: Optional[date] = None

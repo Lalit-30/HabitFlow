@@ -10,20 +10,64 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.core.database import engine, Base
+from app.core.database import engine, Base, SessionLocal
 from app.api.v1.router import api_router
+from app.models.user import User
+from app.core.security import get_password_hash
+
+
+def init_db_and_seed():
+    """
+    Eagerly creates database tables and seeds/synchronizes initial admin and demo user accounts.
+    """
+    try:
+        Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
+        try:
+            # Seed / Synchronize Admin user
+            admin = db.query(User).filter(User.email == "admin@habitflow.com").first()
+            if not admin:
+                admin = User(
+                    email="admin@habitflow.com",
+                    hashed_password=get_password_hash("adminlalit123"),
+                    full_name="System Administrator",
+                    is_admin=True
+                )
+                db.add(admin)
+            else:
+                admin.hashed_password = get_password_hash("adminlalit123")
+                admin.is_admin = True
+
+            # Seed / Synchronize Demo user
+            demo = db.query(User).filter(User.email == "demo@habitflow.com").first()
+            if not demo:
+                demo = User(
+                    email="demo@habitflow.com",
+                    hashed_password=get_password_hash("demopassword123"),
+                    full_name="Demo User",
+                    is_admin=False
+                )
+                db.add(demo)
+            else:
+                demo.hashed_password = get_password_hash("demopassword123")
+
+            db.commit()
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"[WARN] Database initialization error: {e}")
+
+
+# Run initialization on import so serverless Lambdas have pre-built tables
+init_db_and_seed()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Lifespan event handler managing application startup and shutdown tasks.
-    Auto-creates database tables on startup for local development.
     """
-    try:
-        Base.metadata.create_all(bind=engine)
-    except Exception as e:
-        print(f"[WARN] Database initialization error: {e}")
+    init_db_and_seed()
     yield
 
 
@@ -45,7 +89,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include API v1 router with prefix variants for Vercel & local server compatibility
+# Include API v1 router with multiple prefix variants for Vercel Serverless & Local Uvicorn compatibility
 app.include_router(api_router, prefix="/api/v1")
 app.include_router(api_router, prefix="/v1")
 app.include_router(api_router, prefix="")

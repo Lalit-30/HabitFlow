@@ -6,6 +6,7 @@ export interface User {
   xp: number;
   level: number;
   is_active: boolean;
+  is_admin?: boolean;
   avatar_url?: string;
   age?: number;
   dob?: string;
@@ -16,6 +17,8 @@ export interface User {
   weight?: number;
   health_goal?: string;
   created_at: string;
+  habits_count?: number;
+  completions_count?: number;
 }
 
 export interface Category {
