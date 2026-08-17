@@ -19,18 +19,37 @@ export const Register: React.FC = () => {
     setError('');
 
     try {
+      // 1. Register user account
       await api.post('/auth/register', {
-        email,
+        email: email.trim(),
         password,
-        full_name: fullName,
+        full_name: fullName.trim(),
       });
 
-      // Auto login after successful registration
-      const loginRes = await api.post('/auth/login', { email, password });
-      await login(loginRes.data.access_token);
-      navigate('/');
+      // 2. Auto login after successful registration
+      const loginRes = await api.post('/auth/login', {
+        email: email.trim(),
+        password
+      });
+
+      if (loginRes.data?.access_token) {
+        await login(loginRes.data.access_token);
+        navigate('/');
+      } else {
+        throw new Error("Login failed after registration");
+      }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Registration failed. Please try again.');
+      console.error("Registration error:", err);
+      let detail = err.response?.data?.detail;
+      let msg = 'Registration failed. Please check your information and try again.';
+      if (typeof detail === 'string') {
+        msg = detail;
+      } else if (Array.isArray(detail)) {
+        msg = detail.map((d: any) => d.msg || d.detail).join(', ');
+      } else if (err.message) {
+        msg = err.message;
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -98,11 +117,11 @@ export const Register: React.FC = () => {
               <Lock className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type="password"
-                placeholder="At least 6 characters"
+                placeholder="At least 4 characters"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-11 pr-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 text-sm"
-                minLength={6}
+                minLength={4}
                 required
               />
             </div>

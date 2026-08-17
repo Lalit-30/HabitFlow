@@ -27,11 +27,24 @@ export const Login: React.FC = () => {
     setError('');
 
     try {
-      const response = await api.post('/auth/login', { email, password });
+      const response = await api.post('/auth/login', {
+        email: email.trim(),
+        password
+      });
       await login(response.data.access_token);
       navigate('/');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Invalid email or password.');
+      console.error("Login error:", err);
+      let detail = err.response?.data?.detail;
+      let msg = 'Invalid email or password.';
+      if (typeof detail === 'string') {
+        msg = detail;
+      } else if (Array.isArray(detail)) {
+        msg = detail.map((d: any) => d.msg || d.detail).join(', ');
+      } else if (err.message) {
+        msg = err.message;
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -49,8 +62,8 @@ export const Login: React.FC = () => {
       return;
     }
 
-    if (forgotNewPassword.length < 6) {
-      setForgotError('New password must be at least 6 characters.');
+    if (forgotNewPassword.length < 4) {
+      setForgotError('New password must be at least 4 characters.');
       setForgotLoading(false);
       return;
     }
@@ -69,7 +82,14 @@ export const Login: React.FC = () => {
         setForgotSuccess('');
       }, 2500);
     } catch (err: any) {
-      setForgotError(err.response?.data?.detail || 'Failed to reset password. Please check your email.');
+      let detail = err.response?.data?.detail;
+      let msg = 'Failed to reset password. Please check your email.';
+      if (typeof detail === 'string') {
+        msg = detail;
+      } else if (Array.isArray(detail)) {
+        msg = detail.map((d: any) => d.msg || d.detail).join(', ');
+      }
+      setForgotError(msg);
     } finally {
       setForgotLoading(false);
     }
@@ -104,8 +124,8 @@ export const Login: React.FC = () => {
             <div className="relative">
               <Mail className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
-                type="email"
-                placeholder="you@example.com"
+                type="text"
+                placeholder="you@example.com or admin@habitflow.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full pl-11 pr-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 text-sm transition-all"
@@ -208,7 +228,7 @@ export const Login: React.FC = () => {
                   Account Email Address
                 </label>
                 <input
-                  type="email"
+                  type="text"
                   required
                   placeholder="you@example.com"
                   value={forgotEmail}
@@ -224,8 +244,8 @@ export const Login: React.FC = () => {
                 <input
                   type="password"
                   required
-                  minLength={6}
-                  placeholder="At least 6 characters"
+                  minLength={4}
+                  placeholder="At least 4 characters"
                   value={forgotNewPassword}
                   onChange={(e) => setForgotNewPassword(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-white text-sm focus:outline-none focus:border-brand-500"
@@ -239,7 +259,7 @@ export const Login: React.FC = () => {
                 <input
                   type="password"
                   required
-                  minLength={6}
+                  minLength={4}
                   placeholder="Re-enter new password"
                   value={forgotConfirmPassword}
                   onChange={(e) => setForgotConfirmPassword(e.target.value)}

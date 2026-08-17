@@ -1,31 +1,31 @@
 from typing import Optional
 from datetime import datetime, date
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class UserRegisterRequest(BaseModel):
-    email: EmailStr
-    password: str = Field(..., min_length=6, description="Password must be at least 6 characters")
-    full_name: str = Field(..., min_length=2, max_length=100)
+    email: str = Field(..., min_length=3, description="Email address or username")
+    password: str = Field(..., min_length=4, description="Password must be at least 4 characters")
+    full_name: str = Field(..., min_length=1, max_length=100)
 
 
 class UserLoginRequest(BaseModel):
-    email: EmailStr
+    email: str
     password: str
 
 
 class ChangePasswordRequest(BaseModel):
     current_password: str
-    new_password: str = Field(..., min_length=6, description="New password must be at least 6 characters")
+    new_password: str = Field(..., min_length=4, description="New password must be at least 4 characters")
 
 
 class ForgotPasswordRequest(BaseModel):
-    email: EmailStr
-    new_password: str = Field(..., min_length=6, description="New password must be at least 6 characters")
+    email: str
+    new_password: str = Field(..., min_length=4, description="New password must be at least 4 characters")
 
 
 class UserProfileUpdateRequest(BaseModel):
-    full_name: Optional[str] = Field(None, min_length=2, max_length=100)
+    full_name: Optional[str] = Field(None, min_length=1, max_length=100)
     avatar_url: Optional[str] = None
     age: Optional[int] = Field(None, ge=1, le=120)
     dob: Optional[date] = None
@@ -38,9 +38,9 @@ class UserProfileUpdateRequest(BaseModel):
 
 
 class AdminUserCreateRequest(BaseModel):
-    email: EmailStr
-    password: str = Field(..., min_length=6)
-    full_name: str = Field(..., min_length=2)
+    email: str = Field(..., min_length=3)
+    password: str = Field(..., min_length=4)
+    full_name: str = Field(..., min_length=1)
     is_admin: bool = False
     height: Optional[float] = None
     weight: Optional[float] = None
@@ -49,7 +49,7 @@ class AdminUserCreateRequest(BaseModel):
 
 class AdminUserUpdateRequest(BaseModel):
     full_name: Optional[str] = None
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None
     level: Optional[int] = Field(None, ge=1)
     xp: Optional[int] = Field(None, ge=0)
     is_active: Optional[bool] = None
