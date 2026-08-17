@@ -12,13 +12,14 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from app.core.config import settings
-from app.core.database import engine, Base
+from app.core.database import engine, Base, SessionLocal
 from app.api.v1.router import api_router
+from app.repositories.category_repo import CategoryRepository
 
 
 def init_db():
     """
-    Creates database tables for application endpoints and performs auto-migrations for missing columns.
+    Creates database tables for application endpoints, performs auto-migrations, and seeds default categories.
     """
     try:
         Base.metadata.create_all(bind=engine)
@@ -41,6 +42,13 @@ def init_db():
                     conn.commit()
                 except Exception:
                     pass  # Column already exists
+
+        # Seed categories eagerly
+        db = SessionLocal()
+        try:
+            CategoryRepository.seed_system_categories(db)
+        finally:
+            db.close()
     except Exception as e:
         print(f"[WARN] Database initialization error: {e}")
 

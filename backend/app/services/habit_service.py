@@ -39,18 +39,32 @@ class HabitService:
         is_archived: Optional[bool] = False,
         category_id: Optional[str] = None
     ) -> List[HabitResponse]:
+        # Ensure categories are seeded on habit listing
+        CategoryRepository.seed_system_categories(db)
         habits = HabitRepository.list_by_user(db, user_id=user_id, is_archived=is_archived, category_id=category_id)
         return [HabitService.to_habit_response(h) for h in habits]
 
     @staticmethod
     def create_habit(db: Session, user_id: str, request: HabitCreateRequest) -> HabitResponse:
-        # Verify category exists
+        # Seed system categories if cold start on serverless
+        CategoryRepository.seed_system_categories(db)
+
+        # Verify requested category exists or auto-recover fallback
         category = CategoryRepository.get_by_id(db, request.category_id)
         if not category:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Category with ID '{request.category_id}' does not exist."
-            )
+            all_cats = CategoryRepository.list_all_for_user(db, user_id=user_id)
+            if all_cats:
+                category = all_cats[0]
+                request.category_id = category.id
+            else:
+                category = CategoryRepository.create_custom(
+                    db=db,
+                    user_id=user_id,
+                    name="General",
+                    icon="zap",
+                    color="#3B82F6"
+                )
+                request.category_id = category.id
         
         habit = HabitRepository.create(db, user_id=user_id, request=request)
         return HabitService.to_habit_response(habit)
@@ -77,10 +91,12 @@ class HabitService:
         if request.category_id:
             category = CategoryRepository.get_by_id(db, request.category_id)
             if not category:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Category with ID '{request.category_id}' does not exist."
-                )
+                CategoryRepository.seed_system_categories(db)
+                category = CategoryRepository.get_by_id(db, request.category_id)
+                if not category:
+                    all_cats = CategoryRepository.list_all_for_user(db, user_id=user_id)
+                    if all_cats:
+                        request.category_id = all_cats[0].id
 
         updated_habit = HabitRepository.update(db, habit=habit, request=request)
         return HabitService.to_habit_response(updated_habit)
