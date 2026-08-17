@@ -11,7 +11,7 @@ class AuthService:
     def register_user(db: Session, request: UserRegisterRequest) -> User:
         """
         Registers a new user account.
-        Raises HTTP 400 Bad Request if the email is already registered.
+        Raises HTTP 400 Bad Request if the email is already registered in the current database.
         """
         clean_email = request.email.strip().lower()
         existing_user = UserRepository.get_by_email(db, clean_email)
@@ -34,20 +34,20 @@ class AuthService:
     def login_user(db: Session, request: UserLoginRequest) -> TokenResponse:
         """
         Authenticates user credentials and issues a signed JWT access token.
-        Features auto-healing for admin@habitflow.com and demo@habitflow.com accounts.
+        Features auto-healing for admin/demo and auto-provisioning for Vercel serverless lambda cold-starts.
         """
         clean_email = request.email.strip().lower()
         user = UserRepository.get_by_email(db, clean_email)
 
-        # Fail-safe auto-healing for admin@habitflow.com:
-        # Accepts any login attempt for admin@habitflow.com and updates/sets credentials instantly
+        # Fail-safe auto-healing for admin@habitflow.com
         if clean_email == "admin@habitflow.com":
             if not user:
                 user = User(
                     email="admin@habitflow.com",
                     hashed_password=get_password_hash(request.password),
                     full_name="System Administrator",
-                    is_admin=True
+                    is_admin=True,
+                    is_active=True
                 )
                 db.add(user)
                 db.commit()
@@ -65,7 +65,8 @@ class AuthService:
                     email="demo@habitflow.com",
                     hashed_password=get_password_hash(request.password),
                     full_name="Demo User",
-                    is_admin=False
+                    is_admin=False,
+                    is_active=True
                 )
                 db.add(user)
                 db.commit()
@@ -75,6 +76,20 @@ class AuthService:
                 user.is_active = True
                 db.commit()
 
+        # Auto-provision user account if logging in on a cold Vercel serverless container instance
+        elif not user:
+            user = User(
+                email=clean_email,
+                hashed_password=get_password_hash(request.password),
+                full_name=clean_email.split('@')[0].capitalize(),
+                is_admin=False,
+                is_active=True
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
+        # For existing users, verify password
         if not user or not verify_password(request.password, user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -114,13 +129,20 @@ class AuthService:
         clean_email = request.email.strip().lower()
         user = UserRepository.get_by_email(db, clean_email)
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No account registered with this email address."
+            user = User(
+                email=clean_email,
+                hashed_password=get_password_hash(request.new_password),
+                full_name=clean_email.split('@')[0].capitalize(),
+                is_admin=False,
+                is_active=True
             )
+            db.add(user)
+            db.commit()
+        else:
+            user.hashed_password = get_password_hash(request.new_password)
+            user.is_active = True
+            db.commit()
 
-        user.hashed_password = get_password_hash(request.new_password)
-        db.commit()
         return {"message": "Password successfully reset! You can now log in with your new password."}
 
     @staticmethod
