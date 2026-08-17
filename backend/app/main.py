@@ -7,8 +7,10 @@ if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.api.v1.router import api_router
@@ -16,10 +18,29 @@ from app.api.v1.router import api_router
 
 def init_db():
     """
-    Creates database tables for application endpoints.
+    Creates database tables for application endpoints and performs auto-migrations for missing columns.
     """
     try:
         Base.metadata.create_all(bind=engine)
+        with engine.connect() as conn:
+            columns_to_add = [
+                ("is_admin", "BOOLEAN DEFAULT 0"),
+                ("avatar_url", "VARCHAR(500)"),
+                ("age", "INTEGER"),
+                ("dob", "DATE"),
+                ("gender", "VARCHAR(30)"),
+                ("city", "VARCHAR(100)"),
+                ("country", "VARCHAR(100)"),
+                ("height", "FLOAT"),
+                ("weight", "FLOAT"),
+                ("health_goal", "VARCHAR(255)"),
+            ]
+            for col_name, col_type in columns_to_add:
+                try:
+                    conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"))
+                    conn.commit()
+                except Exception:
+                    pass  # Column already exists
     except Exception as e:
         print(f"[WARN] Database initialization error: {e}")
 
@@ -45,6 +66,15 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# Global Exception Handler returning detailed error JSON instead of generic 500 HTML
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    print(f"[ERROR] Global Exception Captured: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Server error: {str(exc)}"}
+    )
 
 # Configure CORS Middleware
 app.add_middleware(

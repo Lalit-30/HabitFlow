@@ -67,13 +67,13 @@ class TokenResponse(BaseModel):
 
 class UserResponse(BaseModel):
     id: str
-    user_code: str
+    user_code: Optional[str] = "#100000"
     email: str
     full_name: str
-    xp: int
-    level: int
-    is_active: bool
-    is_admin: bool = False
+    xp: Optional[int] = 0
+    level: Optional[int] = 1
+    is_active: Optional[bool] = True
+    is_admin: Optional[bool] = False
     avatar_url: Optional[str] = None
     age: Optional[int] = None
     dob: Optional[date] = None
@@ -83,6 +83,6 @@ class UserResponse(BaseModel):
     height: Optional[float] = None
     weight: Optional[float] = None
     health_goal: Optional[str] = None
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
