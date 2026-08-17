@@ -1,25 +1,47 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Any
 import jwt
-from passlib.context import CryptContext
+import bcrypt
 from app.core.config import settings
-
-# Password hashing context using bcrypt
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Verifies a plain-text password against a stored bcrypt hash.
+    Supports both direct native bcrypt and legacy passlib hash formats.
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    if not plain_password or not hashed_password:
+        return False
+
+    # 1. Native bcrypt verification
+    try:
+        pwd_bytes = plain_password.encode('utf-8')
+        hash_bytes = hashed_password.encode('utf-8')
+        if bcrypt.checkpw(pwd_bytes, hash_bytes):
+            return True
+    except Exception:
+        pass
+
+    # 2. Legacy passlib bcrypt fallback verification
+    try:
+        from passlib.context import CryptContext
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        if pwd_context.verify(plain_password, hashed_password):
+            return True
+    except Exception:
+        pass
+
+    return False
 
 
 def get_password_hash(password: str) -> str:
     """
-    Generates a secure bcrypt hash of a plain-text password.
+    Generates a secure bcrypt hash of a plain-text password using native bcrypt.
     """
-    return pwd_context.hash(password)
+    pwd_bytes = password.encode('utf-8')
+    salt = bcrypt.gensalt(rounds=12)
+    hashed = bcrypt.hashpw(pwd_bytes, salt)
+    return hashed.decode('utf-8')
 
 
 def create_access_token(subject: Any, expires_delta: Optional[timedelta] = None) -> str:

@@ -1,3 +1,11 @@
+import sys
+from pathlib import Path
+
+# Add backend directory to sys.path so 'app' module imports succeed in Vercel serverless functions
+backend_dir = Path(__file__).resolve().parent.parent
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,31 +20,35 @@ async def lifespan(app: FastAPI):
     Lifespan event handler managing application startup and shutdown tasks.
     Auto-creates database tables on startup for local development.
     """
-    Base.metadata.create_all(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        print(f"[WARN] Database initialization error: {e}")
     yield
 
 
 # Initialize FastAPI application
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    openapi_url="/openapi.json",
     description="Production-quality RESTful API for Habit Tracker application",
     version="1.0.0",
     lifespan=lifespan
 )
 
 # Configure CORS Middleware
-if settings.CORS_ORIGINS:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.CORS_ORIGINS,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Include API v1 router
-app.include_router(api_router, prefix=settings.API_V1_STR)
+# Include API v1 router with prefix variants for Vercel & local server compatibility
+app.include_router(api_router, prefix="/api/v1")
+app.include_router(api_router, prefix="/v1")
+app.include_router(api_router, prefix="")
 
 
 @app.get("/", tags=["system"])
