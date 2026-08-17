@@ -14,6 +14,7 @@ class User(Base):
     xp = Column(Integer, default=0, nullable=False)
     level = Column(Integer, default=1, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
+    is_admin = Column(Boolean, default=False, nullable=False)
     
     # Extended Profile & Health Tracking attributes
     avatar_url = Column(String(500), nullable=True)
