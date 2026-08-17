@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.schemas.auth import UserRegisterRequest, UserLoginRequest, UserProfileUpdateRequest, ChangePasswordRequest, TokenResponse, UserResponse
+from app.schemas.auth import UserRegisterRequest, UserLoginRequest, UserProfileUpdateRequest, ChangePasswordRequest, ForgotPasswordRequest, TokenResponse, UserResponse
 from app.services.auth_service import AuthService
 from app.api.deps import get_current_user
 from app.models.user import User
@@ -65,3 +65,14 @@ def change_password(
     Protected endpoint: Change or reset account password.
     """
     return AuthService.change_user_password(db=db, user=current_user, request=request)
+
+
+@router.post("/forgot-password", status_code=status.HTTP_200_OK)
+def forgot_password(
+    request: ForgotPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Public endpoint: Reset account password using registered email address.
+    """
+    return AuthService.reset_password_by_email(db=db, request=request)

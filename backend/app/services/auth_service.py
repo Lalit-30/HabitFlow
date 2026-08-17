@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from app.repositories.user_repo import UserRepository
 from app.core.security import get_password_hash, verify_password, create_access_token
-from app.schemas.auth import UserRegisterRequest, UserLoginRequest, TokenResponse, ChangePasswordRequest
+from app.schemas.auth import UserRegisterRequest, UserLoginRequest, TokenResponse, ChangePasswordRequest, ForgotPasswordRequest
 from app.models.user import User
 
 
@@ -100,6 +100,22 @@ class AuthService:
         user.hashed_password = get_password_hash(request.new_password)
         db.commit()
         return {"message": "Password successfully reset and updated."}
+
+    @staticmethod
+    def reset_password_by_email(db: Session, request: ForgotPasswordRequest) -> dict:
+        """
+        Resets user password via email verification.
+        """
+        user = UserRepository.get_by_email(db, request.email)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No account registered with this email address."
+            )
+
+        user.hashed_password = get_password_hash(request.new_password)
+        db.commit()
+        return {"message": "Password successfully reset! You can now log in with your new password."}
 
     @staticmethod
     def update_user_profile(db: Session, user: User, request) -> User:
