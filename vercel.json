@@ -19,8 +19,27 @@
       "dest": "backend/app/main.py"
     },
     {
-      "src": "/(.*)",
-      "dest": "frontend/$1"
+      "src": "/v1/(.*)",
+      "dest": "backend/app/main.py"
+    },
+    {
+      "src": "/openapi.json",
+      "dest": "backend/app/main.py"
+    },
+    {
+      "src": "/docs",
+      "dest": "backend/app/main.py"
+    },
+    {
+      "src": "/health",
+      "dest": "backend/app/main.py"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/.*",
+      "dest": "frontend/index.html"
     }
   ]
 }

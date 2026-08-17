@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.schemas.auth import UserRegisterRequest, UserLoginRequest, UserProfileUpdateRequest, TokenResponse, UserResponse
+from app.schemas.auth import UserRegisterRequest, UserLoginRequest, UserProfileUpdateRequest, ChangePasswordRequest, TokenResponse, UserResponse
 from app.services.auth_service import AuthService
 from app.api.deps import get_current_user
 from app.models.user import User
@@ -53,3 +53,15 @@ def update_profile(
     Protected endpoint: Update profile picture, physical attributes (height, weight, age, dob, gender, location), and health goals.
     """
     return AuthService.update_user_profile(db=db, user=current_user, request=request)
+
+
+@router.post("/change-password", status_code=status.HTTP_200_OK)
+def change_password(
+    request: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Protected endpoint: Change or reset account password.
+    """
+    return AuthService.change_user_password(db=db, user=current_user, request=request)

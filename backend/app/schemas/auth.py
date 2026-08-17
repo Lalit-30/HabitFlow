@@ -14,6 +14,11 @@ class UserLoginRequest(BaseModel):
     password: str
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=6, description="New password must be at least 6 characters")
+
+
 class UserProfileUpdateRequest(BaseModel):
     full_name: Optional[str] = Field(None, min_length=2, max_length=100)
     avatar_url: Optional[str] = None

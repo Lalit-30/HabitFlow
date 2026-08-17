@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from app.repositories.user_repo import UserRepository
 from app.core.security import get_password_hash, verify_password, create_access_token
-from app.schemas.auth import UserRegisterRequest, UserLoginRequest, TokenResponse
+from app.schemas.auth import UserRegisterRequest, UserLoginRequest, TokenResponse, ChangePasswordRequest
 from app.models.user import User
 
 
@@ -85,6 +85,21 @@ class AuthService:
 
         token = create_access_token(subject=user.id)
         return TokenResponse(access_token=token, token_type="bearer")
+
+    @staticmethod
+    def change_user_password(db: Session, user: User, request: ChangePasswordRequest) -> dict:
+        """
+        Verifies current password and sets a new password for the user account.
+        """
+        if not verify_password(request.current_password, user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password entered is incorrect."
+            )
+        
+        user.hashed_password = get_password_hash(request.new_password)
+        db.commit()
+        return {"message": "Password successfully reset and updated."}
 
     @staticmethod
     def update_user_profile(db: Session, user: User, request) -> User:
