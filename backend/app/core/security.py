@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Any
+from typing import Optional, Any, Union
 import jwt
 import bcrypt
 from app.core.config import settings
@@ -44,9 +44,15 @@ def get_password_hash(password: str) -> str:
     return hashed.decode('utf-8')
 
 
-def create_access_token(subject: Any, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(
+    subject: Any,
+    email: Optional[str] = None,
+    is_admin: Optional[bool] = False,
+    full_name: Optional[str] = None,
+    expires_delta: Optional[timedelta] = None
+) -> str:
     """
-    Generates a signed JWT Access Token containing user subject identity and expiration time.
+    Generates a signed JWT Access Token containing user subject identity, email, admin state, and expiration time.
     """
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -56,6 +62,9 @@ def create_access_token(subject: Any, expires_delta: Optional[timedelta] = None)
     to_encode = {
         "exp": expire,
         "sub": str(subject),
+        "email": email,
+        "is_admin": is_admin,
+        "full_name": full_name,
         "iat": datetime.now(timezone.utc)
     }
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)

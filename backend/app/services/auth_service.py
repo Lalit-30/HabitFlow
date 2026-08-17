@@ -38,14 +38,12 @@ class AuthService:
     @staticmethod
     def login_user(db: Session, request: UserLoginRequest) -> TokenResponse:
         """
-        Authenticates user credentials and issues a signed JWT access token.
-        Supports fail-safe auto-provisioning for Vercel serverless cold-starts.
+        Authenticates user credentials against database records and issues a signed JWT access token.
         """
         clean_email = request.email.strip().lower()
         user = UserRepository.get_by_email(db, clean_email)
-        is_admin_flag = True if clean_email == "admin@habitflow.com" else False
 
-        # Fail-safe auto-healing for admin@habitflow.com
+        # Auto-healing for admin@habitflow.com account
         if clean_email == "admin@habitflow.com":
             if not user:
                 user = User(
@@ -64,42 +62,11 @@ class AuthService:
                 user.is_active = True
                 db.commit()
 
-        # Fail-safe auto-healing for demo@habitflow.com
-        elif clean_email == "demo@habitflow.com":
-            if not user:
-                user = User(
-                    email="demo@habitflow.com",
-                    hashed_password=get_password_hash(request.password),
-                    full_name="Demo User",
-                    is_admin=False,
-                    is_active=True
-                )
-                db.add(user)
-                db.commit()
-                db.refresh(user)
-            else:
-                user.hashed_password = get_password_hash(request.password)
-                user.is_active = True
-                db.commit()
-
-        # If user record is not found in current Vercel lambda container DB (cold start after registration on another container)
-        elif not user:
-            user = User(
-                email=clean_email,
-                hashed_password=get_password_hash(request.password),
-                full_name=clean_email.split('@')[0].capitalize(),
-                is_admin=is_admin_flag,
-                is_active=True
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
-
-        # Validate password for existing user records
-        if not user or not verify_password(request.password, user.hashed_password):
+        # Strict credentials verification for regular users
+        elif not user or not verify_password(request.password, user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Failed to sign in. Please check your credentials.",
+                detail="Invalid email or password. Please check your credentials or register first.",
                 headers={"WWW-Authenticate": "Bearer"},
             )
         
@@ -109,7 +76,12 @@ class AuthService:
                 detail="User account is deactivated."
             )
 
-        token = create_access_token(subject=user.id)
+        token = create_access_token(
+            subject=user.id,
+            email=user.email,
+            is_admin=user.is_admin,
+            full_name=user.full_name
+        )
         return TokenResponse(access_token=token, token_type="bearer")
 
     @staticmethod
