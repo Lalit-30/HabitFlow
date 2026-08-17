@@ -1,0 +1,37 @@
+# Virtual Environment
+venv/
+backend/venv/
+ENV/
+env/
+
+# Node dependencies & build output
+node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+
+# Python Cache & Testing
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment Variables & Secrets
+.env
+backend/.env
+
+# Local Databases
+*.db
+*.sqlite
+*.sqlite3
+habit_tracker.db
+test_habit_tracker.db
+backend/habit_tracker.db
+
+# IDE & OS specific
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
