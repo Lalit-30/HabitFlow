@@ -31,11 +31,12 @@ export const CreateHabitModal: React.FC<CreateHabitModalProps> = ({
   onClose,
   onSuccess,
   editingHabit,
-  categories,
+  categories: initialCategories,
 }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [categoriesList, setCategoriesList] = useState<Category[]>(initialCategories);
   const [frequencyType, setFrequencyType] = useState<'daily' | 'weekly' | 'custom'>('daily');
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
   const [targetCount, setTargetCount] = useState(1);
@@ -43,6 +44,21 @@ export const CreateHabitModal: React.FC<CreateHabitModalProps> = ({
   const [color, setColor] = useState('#3B82F6');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Fetch categories if list is empty
+  useEffect(() => {
+    if (isOpen) {
+      if (initialCategories && initialCategories.length > 0) {
+        setCategoriesList(initialCategories);
+      } else {
+        api.get<Category[]>('/categories').then((res) => {
+          if (res.data && res.data.length > 0) {
+            setCategoriesList(res.data);
+          }
+        }).catch(() => {});
+      }
+    }
+  }, [isOpen, initialCategories]);
 
   useEffect(() => {
     if (editingHabit) {
@@ -57,14 +73,16 @@ export const CreateHabitModal: React.FC<CreateHabitModalProps> = ({
     } else {
       setName('');
       setDescription('');
-      if (categories.length > 0) setCategoryId(categories[0].id);
+      if (categoriesList.length > 0) {
+        setCategoryId(categoriesList[0].id);
+      }
       setFrequencyType('daily');
       setDaysOfWeek([0, 1, 2, 3, 4, 5, 6]);
       setTargetCount(1);
       setTargetUnit('times');
       setColor('#3B82F6');
     }
-  }, [editingHabit, categories, isOpen]);
+  }, [editingHabit, categoriesList, isOpen]);
 
   if (!isOpen) return null;
 
@@ -84,9 +102,11 @@ export const CreateHabitModal: React.FC<CreateHabitModalProps> = ({
       setError('Habit name is required.');
       return;
     }
-    if (!categoryId) {
-      setError('Please select a category.');
-      return;
+    
+    // Auto fallback to first category if unselected
+    let selectedCat = categoryId;
+    if (!selectedCat && categoriesList.length > 0) {
+      selectedCat = categoriesList[0].id;
     }
 
     setLoading(true);
@@ -94,7 +114,7 @@ export const CreateHabitModal: React.FC<CreateHabitModalProps> = ({
 
     try {
       const payload = {
-        category_id: categoryId,
+        category_id: selectedCat || 'default',
         name: name.trim(),
         description: description.trim() || undefined,
         icon: 'check-circle',
@@ -114,14 +134,21 @@ export const CreateHabitModal: React.FC<CreateHabitModalProps> = ({
       onSuccess();
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to save habit.');
+      let detail = err.response?.data?.detail;
+      let msg = 'Failed to save habit. Please check your inputs.';
+      if (typeof detail === 'string') {
+        msg = detail;
+      } else if (Array.isArray(detail)) {
+        msg = detail.map((d: any) => d.msg || d.detail).join(', ');
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
       <div className="glass-panel w-full max-w-lg p-6 relative border border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
           <h2 className="text-xl font-bold text-white">
@@ -129,14 +156,14 @@ export const CreateHabitModal: React.FC<CreateHabitModalProps> = ({
           </h2>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+            className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-xl text-sm">
+          <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-xl text-sm font-medium">
             {error}
           </div>
         )}
@@ -158,14 +185,14 @@ export const CreateHabitModal: React.FC<CreateHabitModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-              Category *
+              Category
             </label>
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
               className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-brand-500 text-sm"
             >
-              {categories.map((cat) => (
+              {categoriesList.map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.name}
                 </option>
@@ -267,7 +294,7 @@ export const CreateHabitModal: React.FC<CreateHabitModalProps> = ({
                   key={c}
                   type="button"
                   onClick={() => setColor(c)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center transition-transform hover:scale-110"
+                  className="w-8 h-8 rounded-full flex items-center justify-center transition-transform hover:scale-110 cursor-pointer"
                   style={{ backgroundColor: c }}
                 >
                   {color === c && <Check className="w-4 h-4 text-white stroke-[3]" />}
@@ -280,7 +307,7 @@ export const CreateHabitModal: React.FC<CreateHabitModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-xl font-medium text-sm text-slate-400 hover:text-white hover:bg-slate-800"
+              className="px-5 py-2.5 rounded-xl font-medium text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
             >
               Cancel
             </button>
