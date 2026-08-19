@@ -9,7 +9,6 @@ import {
   User as UserIcon, 
   LogOut,
   Flame,
-  Zap,
   ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -71,7 +70,6 @@ export const Sidebar: React.FC = () => {
         <div className="p-4 mx-4 mb-4 glass-card border border-brand-500/20 bg-brand-950/20">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-amber-400 fill-amber-400" />
               <span className="text-xs font-bold text-amber-300">Level {user.level}</span>
             </div>
             <span className="text-xs text-slate-400 font-mono">{user.xp} XP</span>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User as UserIcon, Mail, Shield, Calendar, LogOut, Zap, Award, Edit3, Save, Camera, MapPin, Activity, Heart, Key, Lock, CheckCircle2 } from 'lucide-react';
+import { User as UserIcon, Mail, Shield, Calendar, LogOut, Award, Edit3, Save, Camera, MapPin, Activity, Heart, Key, Lock, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 
@@ -281,7 +281,6 @@ export const ProfileView: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="glass-card p-5 space-y-1 border border-slate-800">
             <div className="flex items-center gap-2 text-amber-400">
-              <Zap className="w-4 h-4 fill-amber-400" />
               <span className="text-xs font-bold uppercase tracking-wider">Level</span>
             </div>
             <p className="text-2xl font-black text-white font-mono">Level {user?.level}</p>

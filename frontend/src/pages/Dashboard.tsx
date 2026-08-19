@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Flame, Trophy, CheckCircle2, Plus, Sparkles, Activity } from 'lucide-react';
+import { Flame, Trophy, CheckCircle2, Plus, Activity } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { DashboardSummary, Category } from '../types';
@@ -74,7 +74,6 @@ export const Dashboard: React.FC = () => {
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
           <div>
             <div className="flex items-center gap-2 text-brand-400 font-semibold text-xs tracking-wider uppercase mb-1">
-              <Sparkles className="w-4 h-4" />
               <span>Daily Overview</span>
             </div>
             <h1 className="text-3xl font-extrabold text-white tracking-tight">

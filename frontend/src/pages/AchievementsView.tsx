@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Trophy, Zap, Award, Target, CheckCircle2, Flame, Lock } from 'lucide-react';
+import { Trophy, Award, Target, CheckCircle2, Flame, Lock } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Achievement } from '../types';
@@ -37,7 +37,6 @@ export const AchievementsView: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <Zap className="w-4 h-4 text-amber-400 fill-amber-400" />
                 <span className="text-xs font-bold text-amber-300 uppercase tracking-wider">Level {user?.level || 1} Explorer</span>
               </div>
               <h1 className="text-3xl font-extrabold text-white tracking-tight">Achievements & Badges</h1>
