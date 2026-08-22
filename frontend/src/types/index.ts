@@ -61,6 +61,8 @@ export interface HabitCompletion {
   status: 'completed' | 'skipped' | 'failed';
   notes?: string;
   completed_at: string;
+  user_xp?: number;
+  user_level?: number;
 }
 
 export interface DashboardSummary {
@@ -71,6 +73,14 @@ export interface DashboardSummary {
   current_max_streak: number;
   best_ever_streak: number;
   today_habits: Habit[];
+  recent_week_days?: {
+    date: string;
+    day_number: number;
+    day_of_week: number;
+    total_scheduled: number;
+    completed_count: number;
+    completion_percentage: number;
+  }[];
   recent_activity: {
     completion_id: string;
     habit_id: string;

@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, date, timezone
-from sqlalchemy import Column, String, Text, Date, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, String, Text, Date, DateTime, ForeignKey, UniqueConstraint, Index
 from sqlalchemy.orm import relationship
 from app.models.base import Base
 
@@ -18,6 +18,8 @@ class HabitCompletion(Base):
 
     __table_args__ = (
         UniqueConstraint("user_id", "habit_id", "completed_date", name="uq_user_habit_completion_date"),
+        Index("ix_habit_completions_user_date", "user_id", "completed_date"),
+        Index("ix_habit_completions_habit_date", "habit_id", "completed_date"),
     )
 
     # Relationships

@@ -36,12 +36,12 @@ class HabitCreateRequest(BaseModel):
 class HabitUpdateRequest(BaseModel):
     category_id: Optional[str] = None
     name: Optional[str] = Field(None, min_length=2, max_length=150)
-    description: Optional[str] = None
-    icon: Optional[str] = None
-    color: Optional[str] = None
+    description: Optional[str] = Field(None, max_length=500)
+    icon: Optional[str] = Field(None, max_length=50)
+    color: Optional[str] = Field(None, max_length=20)
     frequency_type: Optional[str] = None
     target_count: Optional[int] = Field(None, ge=1)
-    target_unit: Optional[str] = None
+    target_unit: Optional[str] = Field(None, max_length=30)
     start_date: Optional[date] = None
     reminder_time: Optional[time] = None
     days_of_week: Optional[List[int]] = None

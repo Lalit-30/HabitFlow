@@ -147,5 +147,6 @@ def delete_user_by_admin(
             detail=f"User with ID '{user_id}' not found."
         )
 
-    UserRepository.delete_user(db, target)
+    db.delete(target)
+    db.commit()
     return {"message": f"User account '{user_id}' successfully deleted by admin."}

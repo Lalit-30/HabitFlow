@@ -1,5 +1,6 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { api } from '../services/api';
+import { api, onAuthExpired } from '../services/api';
 import { User } from '../types';
 
 interface AuthContextType {
@@ -22,7 +23,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const response = await api.get<User>('/auth/me');
       setUser(response.data);
-    } catch (err) {
+    } catch {
       setUser(null);
       localStorage.removeItem('token');
       setToken(null);
@@ -30,6 +31,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const unsubscribe = onAuthExpired(() => {
+      setToken(null);
+      setUser(null);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (token) {

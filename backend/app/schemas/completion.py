@@ -24,5 +24,7 @@ class HabitCompletionResponse(BaseModel):
     status: str
     notes: Optional[str] = None
     completed_at: datetime
+    user_xp: Optional[int] = None
+    user_level: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)

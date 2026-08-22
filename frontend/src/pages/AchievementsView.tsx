@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Trophy, Award, Target, CheckCircle2, Flame, Lock } from 'lucide-react';
-import { api } from '../services/api';
+import { Trophy, Award, Lock, AlertCircle, RefreshCw } from 'lucide-react';
+import { api, parseApiError } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Achievement } from '../types';
 
@@ -8,13 +8,17 @@ export const AchievementsView: React.FC = () => {
   const { user } = useAuth();
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchAchievements = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const res = await api.get<Achievement[]>('/achievements');
       setAchievements(res.data);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load achievements:', err);
+      setError(parseApiError(err, 'Failed to load achievements.'));
     } finally {
       setLoading(false);
     }
@@ -27,75 +31,89 @@ export const AchievementsView: React.FC = () => {
   const unlockedCount = achievements.filter((a) => a.is_unlocked).length;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 animate-pageEnter">
       {/* Level & Gamification Hero */}
-      <div className="glass-panel p-8 relative overflow-hidden border border-slate-800 bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950/40">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
-          <div className="flex items-center gap-5">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-xl shadow-amber-500/20">
-              <Trophy className="w-10 h-10" />
+      <div className="saas-panel p-6 border border-[#26313C]">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-lg bg-[#D29922]/10 border border-[#D29922]/30 flex items-center justify-center text-[#D29922] shrink-0">
+              <Trophy className="w-7 h-7" />
             </div>
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-bold text-amber-300 uppercase tracking-wider">Level {user?.level || 1} Explorer</span>
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-[11px] font-semibold text-[#D29922] uppercase tracking-wider">Level {user?.level || 1} Explorer</span>
               </div>
-              <h1 className="text-3xl font-extrabold text-white tracking-tight">Achievements & Badges</h1>
-              <p className="text-sm text-slate-400 mt-0.5">
-                Unlocked <span className="text-amber-400 font-semibold">{unlockedCount} of {achievements.length}</span> milestones
+              <h1 className="text-xl sm:text-2xl font-bold text-[#F1F5F9] tracking-tight">Achievements & Badges</h1>
+              <p className="text-xs text-[#A8B3C2] mt-0.5">
+                Unlocked <span className="text-[#D29922] font-semibold">{unlockedCount} of {achievements.length}</span> milestones
               </p>
             </div>
           </div>
 
-          <div className="bg-slate-850/80 p-4 rounded-xl border border-slate-800 text-right font-mono">
-            <p className="text-xs text-slate-400 uppercase tracking-wider">Total XP Earned</p>
-            <p className="text-3xl font-black text-amber-400 mt-0.5">{user?.xp || 0} XP</p>
+          <div className="bg-[#17212B] p-3.5 px-4 rounded-lg border border-[#26313C] text-right font-mono">
+            <p className="text-[10px] text-[#718096] uppercase tracking-wider">Total XP Earned</p>
+            <p className="text-2xl font-bold text-[#D29922] mt-0.5">{user?.xp || 0} XP</p>
           </div>
         </div>
       </div>
 
       {/* Badges Grid */}
       {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-brand-500" />
+        <div className="flex justify-center py-16">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[#4F7CFF]" />
+        </div>
+      ) : error ? (
+        <div className="saas-panel p-8 text-center space-y-3 border border-[#F85149]/30 max-w-lg mx-auto">
+          <AlertCircle className="w-8 h-8 text-[#F85149] mx-auto" />
+          <div>
+            <h3 className="text-base font-semibold text-[#F1F5F9]">Achievements Unavailable</h3>
+            <p className="text-xs text-[#A8B3C2] mt-1">{error}</p>
+          </div>
+          <button
+            onClick={fetchAchievements}
+            className="saas-button-primary mx-auto"
+          >
+            <RefreshCw className="w-4 h-4" /> Retry Loading Achievements
+          </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {achievements.map((ach) => (
             <div
               key={ach.id}
-              className={`glass-panel p-6 border transition-all relative overflow-hidden ${
+              className={`saas-card p-5 border transition-colors relative overflow-hidden ${
                 ach.is_unlocked
-                  ? 'border-amber-500/40 bg-amber-950/10 shadow-lg shadow-amber-500/5'
-                  : 'border-slate-800 opacity-60'
+                  ? 'border-[#D29922]/40 bg-[#D29922]/5'
+                  : 'border-[#26313C] opacity-60'
               }`}
             >
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start justify-between mb-3">
                 <div
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                     ach.is_unlocked
-                      ? 'bg-gradient-to-tr from-amber-500 to-orange-500 text-white shadow-md'
-                      : 'bg-slate-800 text-slate-500'
+                      ? 'bg-[#D29922]/15 text-[#D29922] border border-[#D29922]/30'
+                      : 'bg-[#111820] text-[#718096] border border-[#26313C]'
                   }`}
                 >
-                  {ach.is_unlocked ? <Award className="w-6 h-6" /> : <Lock className="w-6 h-6" />}
+                  {ach.is_unlocked ? <Award className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
                 </div>
 
                 <span
-                  className={`text-xs font-mono font-bold px-2.5 py-1 rounded-full border ${
+                  className={`text-[11px] font-mono font-semibold px-2 py-0.5 rounded border ${
                     ach.is_unlocked
-                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                      : 'bg-slate-800 text-slate-500 border-slate-700'
+                      ? 'bg-[#D29922]/15 text-[#D29922] border-[#D29922]/30'
+                      : 'bg-[#111820] text-[#718096] border-[#26313C]'
                   }`}
                 >
                   +{ach.xp_reward} XP
                 </span>
               </div>
 
-              <h3 className="font-bold text-lg text-white">{ach.title}</h3>
-              <p className="text-xs text-slate-400 mt-1">{ach.description}</p>
+              <h3 className="font-semibold text-base text-[#F1F5F9]">{ach.title}</h3>
+              <p className="text-xs text-[#A8B3C2] mt-1">{ach.description}</p>
 
               {ach.is_unlocked && ach.unlocked_at && (
-                <div className="mt-4 pt-3 border-t border-amber-500/20 flex items-center justify-between text-[11px] text-amber-400 font-mono">
+                <div className="mt-3 pt-2.5 border-t border-[#D29922]/20 flex items-center justify-between text-[10px] text-[#D29922] font-mono">
                   <span>UNLOCKED</span>
                   <span>{new Date(ach.unlocked_at).toLocaleDateString()}</span>
                 </div>
@@ -107,3 +125,5 @@ export const AchievementsView: React.FC = () => {
     </div>
   );
 };
+
+export default AchievementsView;

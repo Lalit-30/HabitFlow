@@ -81,11 +81,11 @@ def get_current_user(
 def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
     """
     FastAPI dependency enforcing Admin permissions.
-    Restricts access strictly to admin@habitflow.com or accounts with is_admin=True.
+    Restricts access strictly to accounts with is_admin=True.
     """
-    if not (current_user.is_admin or current_user.email == "admin@habitflow.com"):
+    if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access restricted strictly to admin account (admin@habitflow.com)."
+            detail="Access restricted strictly to administrative user accounts."
         )
     return current_user

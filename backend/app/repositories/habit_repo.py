@@ -1,5 +1,5 @@
 from typing import List, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.models.habit import Habit, HabitSchedule
 from app.schemas.habit import HabitCreateRequest, HabitUpdateRequest
 
@@ -8,9 +8,12 @@ class HabitRepository:
     @staticmethod
     def get_by_id_and_user(db: Session, habit_id: str, user_id: str) -> Optional[Habit]:
         """
-        Fetch habit by ID scoped strictly to the authenticated user (Multi-Tenant).
+        Fetch habit by ID scoped strictly to the authenticated user (Multi-Tenant) with eager loading.
         """
-        return db.query(Habit).filter(Habit.id == habit_id, Habit.user_id == user_id).first()
+        return db.query(Habit).options(
+            joinedload(Habit.category),
+            joinedload(Habit.schedules)
+        ).filter(Habit.id == habit_id, Habit.user_id == user_id).first()
 
     @staticmethod
     def list_by_user(
@@ -20,9 +23,12 @@ class HabitRepository:
         category_id: Optional[str] = None
     ) -> List[Habit]:
         """
-        List habits belonging to user with optional archived and category filters.
+        List habits belonging to user with eager loading of categories and schedules.
         """
-        query = db.query(Habit).filter(Habit.user_id == user_id)
+        query = db.query(Habit).options(
+            joinedload(Habit.category),
+            joinedload(Habit.schedules)
+        ).filter(Habit.user_id == user_id)
         if is_archived is not None:
             query = query.filter(Habit.is_archived == is_archived)
         if category_id:

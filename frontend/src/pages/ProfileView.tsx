@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { User as UserIcon, Mail, Shield, Calendar, LogOut, Award, Edit3, Save, Camera, MapPin, Activity, Heart, Key, Lock, CheckCircle2 } from 'lucide-react';
+import { Shield, LogOut, Award, Edit3, Save, MapPin, Activity, Heart, Key, Lock, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../services/api';
+import { useToast } from '../context/ToastContext';
+import { api, parseApiError } from '../services/api';
 
 export const ProfileView: React.FC = () => {
   const { user, logout, refetchUser } = useAuth();
+  const { showToast } = useToast();
 
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -68,9 +70,12 @@ export const ProfileView: React.FC = () => {
 
       await refetchUser();
       setMessage('Profile updated successfully!');
+      showToast('Profile updated successfully!', 'success');
       setEditing(false);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to update profile.');
+      const errMsg = parseApiError(err, 'Failed to update profile.');
+      setError(errMsg);
+      showToast(errMsg, 'error');
     } finally {
       setLoading(false);
     }
@@ -101,45 +106,48 @@ export const ProfileView: React.FC = () => {
       });
 
       setPwdMessage('Password successfully reset and updated!');
+      showToast('Account password updated successfully!', 'success');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setShowPasswordSection(false);
     } catch (err: any) {
-      setPwdError(err.response?.data?.detail || 'Failed to reset password. Please verify your current password.');
+      const errMsg = parseApiError(err, 'Failed to reset password. Please verify your current password.');
+      setPwdError(errMsg);
+      showToast(errMsg, 'error');
     } finally {
       setPwdLoading(false);
     }
   };
 
   return (
-    <div className="max-w-4xl space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="max-w-4xl space-y-6 animate-pageEnter">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#26313C] pb-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">User Profile & Account Security</h1>
-          <p className="text-sm text-slate-400">Personalized data, security parameters, and health stats</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#F1F5F9] tracking-tight">User Profile & Account Security</h1>
+          <p className="text-xs sm:text-sm text-[#A8B3C2] mt-0.5">Personalized data, security parameters, and health stats</p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={() => setShowPasswordSection(!showPasswordSection)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm border border-slate-700 transition-all"
+            className="saas-button-secondary"
           >
-            <Key className="w-4 h-4 text-amber-400" />
+            <Key className="w-4 h-4 text-[#D29922]" />
             <span>{showPasswordSection ? 'Hide Reset Password' : 'Reset Password'}</span>
           </button>
 
           {!editing ? (
             <button
               onClick={() => setEditing(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm shadow-md transition-all"
+              className="saas-button-primary"
             >
               <Edit3 className="w-4 h-4" /> Edit Profile
             </button>
           ) : (
             <button
               onClick={() => setEditing(false)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-sm border border-slate-700"
+              className="saas-button-secondary"
             >
               Cancel
             </button>
@@ -148,50 +156,50 @@ export const ProfileView: React.FC = () => {
       </div>
 
       {message && (
-        <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-sm font-medium">
+        <div className="p-3 bg-[#3FB950]/10 border border-[#3FB950]/30 text-[#3FB950] rounded-lg text-xs font-medium">
           {message}
         </div>
       )}
       {error && (
-        <div className="p-4 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-xl text-sm font-medium">
+        <div className="p-3 bg-[#F85149]/10 border border-[#F85149]/30 text-[#F85149] rounded-lg text-xs font-medium">
           {error}
         </div>
       )}
       {pwdMessage && (
-        <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-sm font-medium flex items-center gap-2">
-          <CheckCircle2 className="w-5 h-5" /> {pwdMessage}
+        <div className="p-3 bg-[#3FB950]/10 border border-[#3FB950]/30 text-[#3FB950] rounded-lg text-xs font-medium flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4" /> {pwdMessage}
         </div>
       )}
 
       {/* PASSWORD RESET SECTION */}
       {showPasswordSection && (
-        <form onSubmit={handlePasswordReset} className="glass-panel p-6 border border-amber-500/30 bg-slate-900/90 rounded-2xl space-y-4 shadow-xl">
-          <div className="flex items-center gap-2 text-amber-400 font-bold border-b border-slate-800 pb-3">
-            <Lock className="w-5 h-5" />
+        <form onSubmit={handlePasswordReset} className="saas-panel p-5 border border-[#D29922]/30 space-y-4">
+          <div className="flex items-center gap-2 text-[#D29922] font-semibold text-sm border-b border-[#26313C] pb-2.5">
+            <Lock className="w-4 h-4" />
             <span>Reset Account Password</span>
           </div>
 
           {pwdError && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-xl text-xs font-medium">
+            <div className="p-3 bg-[#F85149]/10 border border-[#F85149]/30 text-[#F85149] rounded-lg text-xs font-medium">
               {pwdError}
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Current Password</label>
+              <label className="block text-xs font-medium text-[#A8B3C2] mb-1">Current Password</label>
               <input
                 type="password"
                 required
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder="Enter current password"
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-sm focus:outline-none focus:border-amber-500"
+                className="w-full saas-input"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">New Password</label>
+              <label className="block text-xs font-medium text-[#A8B3C2] mb-1">New Password</label>
               <input
                 type="password"
                 required
@@ -199,12 +207,12 @@ export const ProfileView: React.FC = () => {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Min 6 characters"
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-sm focus:outline-none focus:border-amber-500"
+                className="w-full saas-input"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Confirm New Password</label>
+              <label className="block text-xs font-medium text-[#A8B3C2] mb-1">Confirm New Password</label>
               <input
                 type="password"
                 required
@@ -212,23 +220,23 @@ export const ProfileView: React.FC = () => {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Re-enter new password"
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-sm focus:outline-none focus:border-amber-500"
+                className="w-full saas-input"
               />
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-2">
+          <div className="flex items-center justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={() => setShowPasswordSection(false)}
-              className="px-4 py-2 bg-slate-800 text-slate-400 hover:text-white rounded-xl text-xs font-medium"
+              className="saas-button-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={pwdLoading}
-              className="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-amber-600/30 transition disabled:opacity-50"
+              className="saas-button-primary"
             >
               {pwdLoading ? 'Resetting...' : 'Update Password'}
             </button>
@@ -237,40 +245,42 @@ export const ProfileView: React.FC = () => {
       )}
 
       {/* Main Profile Card Header */}
-      <div className="glass-panel p-8 border border-slate-800 space-y-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 border-b border-slate-800 pb-6">
-          <div className="flex items-center gap-5">
+      <div className="saas-panel p-6 border border-[#26313C] space-y-5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 border-b border-[#26313C] pb-5">
+          <div className="flex items-center gap-4">
             <div className="relative group">
               {avatarUrl ? (
                 <img
                   src={avatarUrl}
                   alt={user?.full_name}
-                  className="w-20 h-20 rounded-2xl object-cover border-2 border-brand-500 shadow-xl"
+                  loading="lazy"
+                  decoding="async"
+                  className="w-16 h-16 rounded-lg object-cover border border-[#26313C]"
                 />
               ) : (
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-600 flex items-center justify-center text-white text-3xl font-extrabold shadow-xl">
+                <div className="w-16 h-16 rounded-lg bg-[#17212B] border border-[#26313C] flex items-center justify-center text-[#4F7CFF] text-2xl font-bold">
                   {user?.full_name?.charAt(0) || 'U'}
                 </div>
               )}
             </div>
 
             <div>
-              <div className="flex items-center gap-3">
-                <h2 className="text-2xl font-bold text-white">{user?.full_name}</h2>
-                <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/40">
+              <div className="flex items-center gap-2.5">
+                <h2 className="text-xl font-bold text-[#F1F5F9]">{user?.full_name}</h2>
+                <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-[#17212B] text-[#4F7CFF] border border-[#26313C]">
                   {user?.user_code}
                 </span>
               </div>
-              <p className="text-sm text-slate-400 mt-1">{user?.email}</p>
-              <div className="flex items-center gap-3 mt-2 text-xs text-slate-400">
-                <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-slate-500" /> {user?.city || 'City'}, {user?.country || 'Country'}</span>
+              <p className="text-xs text-[#A8B3C2] mt-0.5">{user?.email}</p>
+              <div className="flex items-center gap-3 mt-1.5 text-xs text-[#718096]">
+                <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-[#718096]" /> {user?.city || 'City'}, {user?.country || 'Country'}</span>
               </div>
             </div>
           </div>
 
           <button
             onClick={logout}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-semibold text-sm border border-rose-500/30 transition-all"
+            className="saas-button-danger"
           >
             <LogOut className="w-4 h-4" />
             <span>Sign Out</span>
@@ -278,42 +288,42 @@ export const ProfileView: React.FC = () => {
         </div>
 
         {/* Level Stats Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="glass-card p-5 space-y-1 border border-slate-800">
-            <div className="flex items-center gap-2 text-amber-400">
-              <span className="text-xs font-bold uppercase tracking-wider">Level</span>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="saas-card p-4 space-y-1 border border-[#26313C]">
+            <div className="flex items-center gap-2 text-[#D29922]">
+              <span className="text-xs font-medium uppercase tracking-wider">Level</span>
             </div>
-            <p className="text-2xl font-black text-white font-mono">Level {user?.level}</p>
+            <p className="text-xl font-bold text-[#F1F5F9] font-mono">Level {user?.level}</p>
           </div>
 
-          <div className="glass-card p-5 space-y-1 border border-slate-800">
-            <div className="flex items-center gap-2 text-brand-400">
+          <div className="saas-card p-4 space-y-1 border border-[#26313C]">
+            <div className="flex items-center gap-2 text-[#4F7CFF]">
               <Award className="w-4 h-4" />
-              <span className="text-xs font-bold uppercase tracking-wider">XP Points</span>
+              <span className="text-xs font-medium uppercase tracking-wider">XP Points</span>
             </div>
-            <p className="text-2xl font-black text-white font-mono">{user?.xp} XP</p>
+            <p className="text-xl font-bold text-[#F1F5F9] font-mono">{user?.xp} XP</p>
           </div>
 
-          <div className="glass-card p-5 space-y-1 border border-slate-800">
-            <div className="flex items-center gap-2 text-emerald-400">
+          <div className="saas-card p-4 space-y-1 border border-[#26313C]">
+            <div className="flex items-center gap-2 text-[#3FB950]">
               <Shield className="w-4 h-4" />
-              <span className="text-xs font-bold uppercase tracking-wider">Unique User Code</span>
+              <span className="text-xs font-medium uppercase tracking-wider">User Code</span>
             </div>
-            <p className="text-2xl font-black text-emerald-300 font-mono">{user?.user_code}</p>
+            <p className="text-xl font-bold text-[#3FB950] font-mono">{user?.user_code}</p>
           </div>
         </div>
       </div>
 
       {/* Editable Details Form */}
-      <form onSubmit={handleSave} className="glass-panel p-8 border border-slate-800 space-y-6">
-        <h3 className="text-lg font-bold text-white border-b border-slate-800 pb-3 flex items-center gap-2">
-          <Activity className="w-5 h-5 text-brand-400" />
+      <form onSubmit={handleSave} className="saas-panel p-6 border border-[#26313C] space-y-5">
+        <h3 className="text-base font-semibold text-[#F1F5F9] border-b border-[#26313C] pb-3 flex items-center gap-2">
+          <Activity className="w-4 h-4 text-[#4F7CFF]" />
           <span>Health Parameters & Personal Info</span>
         </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-medium text-[#A8B3C2] mb-1">
               Full Name
             </label>
             <input
@@ -321,12 +331,12 @@ export const ProfileView: React.FC = () => {
               disabled={!editing}
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-white disabled:opacity-60 text-sm focus:outline-none focus:border-brand-500"
+              className="w-full saas-input"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-medium text-[#A8B3C2] mb-1">
               Profile Picture URL
             </label>
             <input
@@ -335,12 +345,12 @@ export const ProfileView: React.FC = () => {
               placeholder="https://example.com/avatar.jpg"
               value={avatarUrl}
               onChange={(e) => setAvatarUrl(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-white disabled:opacity-60 text-sm focus:outline-none focus:border-brand-500"
+              className="w-full saas-input"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-medium text-[#A8B3C2] mb-1">
               Age (Years)
             </label>
             <input
@@ -349,12 +359,12 @@ export const ProfileView: React.FC = () => {
               placeholder="e.g. 24"
               value={age}
               onChange={(e) => setAge(e.target.value ? parseInt(e.target.value) : '')}
-              className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-white disabled:opacity-60 text-sm focus:outline-none focus:border-brand-500"
+              className="w-full saas-input"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-medium text-[#A8B3C2] mb-1">
               Date of Birth
             </label>
             <input
@@ -362,19 +372,19 @@ export const ProfileView: React.FC = () => {
               disabled={!editing}
               value={dob}
               onChange={(e) => setDob(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-white disabled:opacity-60 text-sm focus:outline-none focus:border-brand-500"
+              className="w-full saas-input"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-medium text-[#A8B3C2] mb-1">
               Gender
             </label>
             <select
               disabled={!editing}
               value={gender}
               onChange={(e) => setGender(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-white disabled:opacity-60 text-sm focus:outline-none focus:border-brand-500"
+              className="w-full saas-input cursor-pointer"
             >
               <option value="">Select Gender</option>
               <option value="Male">Male</option>
@@ -385,7 +395,7 @@ export const ProfileView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-medium text-[#A8B3C2] mb-1">
               City / Place
             </label>
             <input
@@ -394,12 +404,12 @@ export const ProfileView: React.FC = () => {
               placeholder="e.g. San Francisco"
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-white disabled:opacity-60 text-sm focus:outline-none focus:border-brand-500"
+              className="w-full saas-input"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-medium text-[#A8B3C2] mb-1">
               Country
             </label>
             <input
@@ -408,13 +418,13 @@ export const ProfileView: React.FC = () => {
               placeholder="e.g. United States"
               value={country}
               onChange={(e) => setCountry(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-white disabled:opacity-60 text-sm focus:outline-none focus:border-brand-500"
+              className="w-full saas-input"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-medium text-[#A8B3C2] mb-1">
                 Height (cm)
               </label>
               <input
@@ -423,11 +433,11 @@ export const ProfileView: React.FC = () => {
                 placeholder="175"
                 value={height}
                 onChange={(e) => setHeight(e.target.value ? parseFloat(e.target.value) : '')}
-                className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-white disabled:opacity-60 text-sm focus:outline-none focus:border-brand-500"
+                className="w-full saas-input"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-medium text-[#A8B3C2] mb-1">
                 Weight (kg)
               </label>
               <input
@@ -436,15 +446,15 @@ export const ProfileView: React.FC = () => {
                 placeholder="70"
                 value={weight}
                 onChange={(e) => setWeight(e.target.value ? parseFloat(e.target.value) : '')}
-                className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-white disabled:opacity-60 text-sm focus:outline-none focus:border-brand-500"
+                className="w-full saas-input"
               />
             </div>
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-            <Heart className="w-4 h-4 text-rose-400" /> Primary Health & Habit Target
+          <label className="block text-xs font-medium text-[#A8B3C2] mb-1 flex items-center gap-1.5">
+            <Heart className="w-3.5 h-3.5 text-[#F85149]" /> Primary Health & Habit Target
           </label>
           <input
             type="text"
@@ -452,23 +462,23 @@ export const ProfileView: React.FC = () => {
             placeholder="e.g. Build core strength, stay hydrated, sleep by 11 PM"
             value={healthGoal}
             onChange={(e) => setHealthGoal(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-white disabled:opacity-60 text-sm focus:outline-none focus:border-brand-500"
+            className="w-full saas-input"
           />
         </div>
 
         {editing && (
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+          <div className="flex justify-end gap-2.5 pt-3 border-t border-[#26313C]">
             <button
               type="button"
               onClick={() => setEditing(false)}
-              className="px-5 py-2.5 rounded-xl font-medium text-sm text-slate-400 hover:text-white hover:bg-slate-800"
+              className="saas-button-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm bg-brand-600 hover:bg-brand-500 text-white shadow-lg shadow-brand-500/25 transition-all disabled:opacity-50"
+              className="saas-button-primary"
             >
               <Save className="w-4 h-4" />
               <span>{loading ? 'Saving...' : 'Save Profile Changes'}</span>
@@ -479,3 +489,5 @@ export const ProfileView: React.FC = () => {
     </div>
   );
 };
+
+export default ProfileView;

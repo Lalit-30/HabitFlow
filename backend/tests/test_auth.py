@@ -104,3 +104,90 @@ def test_get_current_user_profile_unauthorized(client):
     headers = {"Authorization": "Bearer invalid_token_12345"}
     res2 = client.get("/api/v1/auth/me", headers=headers)
     assert res2.status_code == 401
+
+
+def test_update_user_profile(client):
+    # 1. Register & login
+    email = "updateprof@example.com"
+    client.post("/api/v1/auth/register", json={
+        "email": email,
+        "password": "password123",
+        "full_name": "Before Update"
+    })
+    token = client.post("/api/v1/auth/login", json={
+        "email": email,
+        "password": "password123"
+    }).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 2. Update profile parameters
+    update_res = client.put("/api/v1/auth/profile", headers=headers, json={
+        "full_name": "After Update",
+        "height": 180.5,
+        "weight": 75.0,
+        "health_goal": "Run 5K daily"
+    })
+    assert update_res.status_code == 200
+    data = update_res.json()
+    assert data["full_name"] == "After Update"
+    assert data["height"] == 180.5
+    assert data["weight"] == 75.0
+    assert data["health_goal"] == "Run 5K daily"
+
+
+def test_change_password_workflow(client):
+    email = "changepwd@example.com"
+    client.post("/api/v1/auth/register", json={
+        "email": email,
+        "password": "oldpassword123",
+        "full_name": "Change Pwd User"
+    })
+    token = client.post("/api/v1/auth/login", json={
+        "email": email,
+        "password": "oldpassword123"
+    }).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Incorrect current password should fail
+    fail_res = client.post("/api/v1/auth/change-password", headers=headers, json={
+        "current_password": "wrongoldpassword",
+        "new_password": "newpassword123"
+    })
+    assert fail_res.status_code == 400
+
+    # Correct current password should succeed
+    success_res = client.post("/api/v1/auth/change-password", headers=headers, json={
+        "current_password": "oldpassword123",
+        "new_password": "newpassword123"
+    })
+    assert success_res.status_code == 200
+
+    # Login with new password
+    new_login = client.post("/api/v1/auth/login", json={
+        "email": email,
+        "password": "newpassword123"
+    })
+    assert new_login.status_code == 200
+
+
+def test_forgot_password_reset(client):
+    email = "forgotuser@example.com"
+    client.post("/api/v1/auth/register", json={
+        "email": email,
+        "password": "initialpassword",
+        "full_name": "Forgot User"
+    })
+
+    reset_res = client.post("/api/v1/auth/forgot-password", json={
+        "email": email,
+        "new_password": "resetpassword123"
+    })
+    assert reset_res.status_code == 200
+
+    # Login with reset password
+    login_res = client.post("/api/v1/auth/login", json={
+        "email": email,
+        "password": "resetpassword123"
+    })
+    assert login_res.status_code == 200
+

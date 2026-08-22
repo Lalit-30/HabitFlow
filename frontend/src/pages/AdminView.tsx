@@ -12,13 +12,14 @@ import {
   XCircle,
   Flame,
   Award,
-  Calendar,
   X
 } from 'lucide-react';
-import { api } from '../services/api';
+import { api, parseApiError } from '../services/api';
 import { User } from '../types';
+import { useToast } from '../context/ToastContext';
 
 export const AdminView: React.FC = () => {
+  const { showToast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -64,20 +65,15 @@ export const AdminView: React.FC = () => {
       setLastRefreshed(new Date());
     } catch (err: any) {
       console.error("Failed to fetch admin users:", err);
-      setError(err.response?.data?.detail || "Failed to load admin user data.");
+      setError(parseApiError(err, "Failed to load admin user data."));
     } finally {
       setLoading(false);
       if (isManualRefresh) setIsRefreshing(false);
     }
   }, []);
 
-  // Auto-polling every 4 seconds for real-time autoupdate
   useEffect(() => {
     fetchUsers();
-    const interval = setInterval(() => {
-      fetchUsers();
-    }, 4000);
-    return () => clearInterval(interval);
   }, [fetchUsers]);
 
   // Handle Add User submission
@@ -94,9 +90,10 @@ export const AdminView: React.FC = () => {
       });
       setShowAddModal(false);
       setAddForm({ email: '', password: '', full_name: '', height: '', weight: '', health_goal: '' });
+      showToast('User account created successfully.', 'success');
       fetchUsers(true);
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to add user.");
+      showToast(err.response?.data?.detail || "Failed to add user.", 'error');
     }
   };
 
@@ -118,9 +115,10 @@ export const AdminView: React.FC = () => {
         is_active: editForm.is_active
       });
       setEditingUser(null);
+      showToast('User profile updated successfully.', 'success');
       fetchUsers(true);
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to update user.");
+      showToast(err.response?.data?.detail || "Failed to update user.", 'error');
     }
   };
 
@@ -130,9 +128,10 @@ export const AdminView: React.FC = () => {
     try {
       await api.delete(`/admin/users/${deletingUser.id}`);
       setDeletingUser(null);
+      showToast('User account deleted.', 'info');
       fetchUsers(true);
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to delete user.");
+      showToast(err.response?.data?.detail || "Failed to delete user.", 'error');
     }
   };
 
@@ -159,36 +158,33 @@ export const AdminView: React.FC = () => {
   );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 animate-pageEnter">
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#26313C] pb-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-brand-500/20 text-brand-400 border border-brand-500/30 flex items-center gap-1.5">
+            <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-[#4F7CFF]/15 text-[#4F7CFF] border border-[#4F7CFF]/30 flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5" /> Super Admin Access
             </span>
-            <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" /> Real-time Auto-Sync
-            </span>
           </div>
-          <h1 className="text-2xl font-bold text-white">HabitFlow Admin Control Center</h1>
-          <p className="text-slate-400 text-sm">
-            Live overview and management of all registered app users ({users.length} Total Users)
+          <h1 className="text-xl sm:text-2xl font-bold text-[#F1F5F9] tracking-tight">Admin Control Center</h1>
+          <p className="text-xs sm:text-sm text-[#A8B3C2] mt-0.5">
+            User management and app statistics ({users.length} Total Users)
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={() => fetchUsers(true)}
             disabled={isRefreshing}
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-sm font-medium transition border border-slate-700 disabled:opacity-50"
+            className="saas-button-secondary"
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh
           </button>
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-semibold transition shadow-lg shadow-brand-600/30"
+            className="saas-button-primary"
           >
             <Plus className="w-4 h-4" /> Add User
           </button>
@@ -196,36 +192,36 @@ export const AdminView: React.FC = () => {
       </div>
 
       {/* Quick Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <div className="glass-card p-5 border border-slate-800 rounded-xl flex items-center gap-4">
-          <div className="p-3 bg-brand-500/10 text-brand-400 rounded-xl">
-            <Users className="w-6 h-6" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="saas-card p-4 flex items-center gap-3">
+          <div className="p-2.5 bg-[#4F7CFF]/10 text-[#4F7CFF] border border-[#4F7CFF]/20 rounded-lg">
+            <Users className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-xs text-slate-400 font-medium">Active App Users</p>
-            <h3 className="text-2xl font-bold text-white">{users.filter(u => u.is_active).length}</h3>
+            <p className="text-xs text-[#718096] font-medium">Active App Users</p>
+            <h3 className="text-xl font-bold text-[#F1F5F9] font-mono">{users.filter(u => u.is_active).length}</h3>
           </div>
         </div>
 
-        <div className="glass-card p-5 border border-slate-800 rounded-xl flex items-center gap-4">
-          <div className="p-3 bg-amber-500/10 text-amber-400 rounded-xl">
-            <Flame className="w-6 h-6" />
+        <div className="saas-card p-4 flex items-center gap-3">
+          <div className="p-2.5 bg-[#D29922]/10 text-[#D29922] border border-[#D29922]/20 rounded-lg">
+            <Flame className="w-5 h-5 fill-[#D29922]" />
           </div>
           <div>
-            <p className="text-xs text-slate-400 font-medium">Total Tracked Habits</p>
-            <h3 className="text-2xl font-bold text-white">
+            <p className="text-xs text-[#718096] font-medium">Total Tracked Habits</p>
+            <h3 className="text-xl font-bold text-[#F1F5F9] font-mono">
               {users.reduce((acc, u) => acc + (u.habits_count || 0), 0)}
             </h3>
           </div>
         </div>
 
-        <div className="glass-card p-5 border border-slate-800 rounded-xl flex items-center gap-4">
-          <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl">
-            <Activity className="w-6 h-6" />
+        <div className="saas-card p-4 flex items-center gap-3">
+          <div className="p-2.5 bg-[#3FB950]/10 text-[#3FB950] border border-[#3FB950]/20 rounded-lg">
+            <Activity className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-xs text-slate-400 font-medium">Total Completions</p>
-            <h3 className="text-2xl font-bold text-white">
+            <p className="text-xs text-[#718096] font-medium">Total Completions</p>
+            <h3 className="text-xl font-bold text-[#F1F5F9] font-mono">
               {users.reduce((acc, u) => acc + (u.completions_count || 0), 0)}
             </h3>
           </div>
@@ -233,139 +229,138 @@ export const AdminView: React.FC = () => {
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="flex items-center gap-4 bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+      <div className="saas-panel p-3.5 flex items-center gap-3 border border-[#26313C]">
         <div className="relative flex-1">
-          <Search className="w-5 h-5 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-[#718096] absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Search users by name, email, or user code..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 text-slate-200 pl-11 pr-4 py-2.5 rounded-xl focus:outline-none focus:border-brand-500 text-sm"
+            className="w-full saas-input pl-9 pr-3 py-1.5 text-xs"
           />
         </div>
-        <div className="text-xs text-slate-500 font-mono hidden sm:block">
-          Auto-updated at {lastRefreshed.toLocaleTimeString()}
+        <div className="text-[11px] text-[#718096] font-mono hidden sm:block">
+          Synced {lastRefreshed.toLocaleTimeString()}
         </div>
       </div>
 
       {/* Users Data Table */}
       {loading ? (
         <div className="text-center py-16">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-brand-500 mx-auto mb-4" />
-          <p className="text-slate-400 text-sm">Loading user database...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[#4F7CFF] mx-auto mb-3" />
+          <p className="text-[#718096] text-xs">Loading user database...</p>
         </div>
       ) : error ? (
-        <div className="p-6 bg-rose-500/10 border border-rose-500/30 text-rose-300 rounded-2xl text-center">
+        <div className="p-4 bg-[#F85149]/10 border border-[#F85149]/30 text-[#F85149] rounded-lg text-center text-xs font-medium">
           {error}
         </div>
       ) : (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+        <div className="saas-panel border border-[#26313C] rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-800 bg-slate-950/60 text-slate-400 text-xs font-semibold uppercase tracking-wider">
-                  <th className="py-4 px-6">User</th>
-                  <th className="py-4 px-4">Level & XP</th>
-                  <th className="py-4 px-4">Habits & Activity</th>
-                  <th className="py-4 px-4">Physical Stats</th>
-                  <th className="py-4 px-4">Status</th>
-                  <th className="py-4 px-4">Joined Date</th>
-                  <th className="py-4 px-6 text-right">Actions</th>
+                <tr className="border-b border-[#26313C] bg-[#111820] text-[#718096] text-[11px] font-semibold uppercase tracking-wider">
+                  <th className="py-3 px-4">User</th>
+                  <th className="py-3 px-3">Level & XP</th>
+                  <th className="py-3 px-3">Habits & Logs</th>
+                  <th className="py-3 px-3">Stats</th>
+                  <th className="py-3 px-3">Status</th>
+                  <th className="py-3 px-3">Joined</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-sm">
+              <tbody className="divide-y divide-[#26313C] text-xs">
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-12 text-slate-400">
+                    <td colSpan={7} className="text-center py-10 text-[#718096]">
                       No matching user accounts found.
                     </td>
                   </tr>
                 ) : (
                   filteredUsers.map((u) => (
-                    <tr key={u.id} className="hover:bg-slate-800/40 transition">
+                    <tr key={u.id} className="hover:bg-[#17212B] transition-colors">
                       {/* User Info */}
-                      <td className="py-4 px-6">
+                      <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-brand-400 flex-shrink-0">
+                          <div className="w-8 h-8 rounded-lg bg-[#17212B] border border-[#26313C] flex items-center justify-center font-bold text-[#4F7CFF] shrink-0">
                             {u.full_name.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div className="font-semibold text-white flex items-center gap-2">
+                            <div className="font-semibold text-[#F1F5F9] flex items-center gap-1.5">
                               {u.full_name}
-                              <span className="text-xs text-brand-400 font-mono font-normal">
+                              <span className="text-[10px] text-[#4F7CFF] font-mono">
                                 {u.user_code || `#${u.id.substring(0, 6)}`}
                               </span>
                             </div>
-                            <div className="text-xs text-slate-400">{u.email}</div>
+                            <div className="text-[11px] text-[#718096]">{u.email}</div>
                           </div>
                         </div>
                       </td>
 
                       {/* Level & XP */}
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-2">
-                          <Award className="w-4 h-4 text-amber-400" />
-                          <span className="font-bold text-white">Lvl {u.level}</span>
-                          <span className="text-xs text-slate-400">({u.xp} XP)</span>
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-1.5">
+                          <Award className="w-3.5 h-3.5 text-[#D29922]" />
+                          <span className="font-semibold text-[#F1F5F9]">Lvl {u.level}</span>
+                          <span className="text-[11px] text-[#718096]">({u.xp} XP)</span>
                         </div>
                       </td>
 
                       {/* Habits & Activity */}
-                      <td className="py-4 px-4">
-                        <div className="text-xs text-slate-300">
-                          <span className="font-semibold text-brand-400">{u.habits_count || 0}</span> Habits Created
+                      <td className="py-3 px-3">
+                        <div className="text-[11px] text-[#A8B3C2]">
+                          <span className="font-semibold text-[#4F7CFF]">{u.habits_count || 0}</span> Habits
                         </div>
-                        <div className="text-xs text-slate-400">
-                          <span className="font-semibold text-emerald-400">{u.completions_count || 0}</span> Completions
+                        <div className="text-[11px] text-[#718096]">
+                          <span className="font-semibold text-[#3FB950]">{u.completions_count || 0}</span> Logs
                         </div>
                       </td>
 
                       {/* Physical Stats */}
-                      <td className="py-4 px-4 text-xs text-slate-300">
+                      <td className="py-3 px-3 text-[11px] text-[#A8B3C2]">
                         {u.height || u.weight ? (
                           <div>
                             {u.height ? `${u.height} cm` : ''} {u.weight ? `| ${u.weight} kg` : ''}
-                            {u.health_goal && <div className="text-slate-400 italic font-mono truncate max-w-[120px]">{u.health_goal}</div>}
                           </div>
                         ) : (
-                          <span className="text-slate-500 italic">Not specified</span>
+                          <span className="text-[#718096] font-normal">--</span>
                         )}
                       </td>
 
                       {/* Status */}
-                      <td className="py-4 px-4">
+                      <td className="py-3 px-3">
                         {u.is_active ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Active
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#3FB950]/10 text-[#3FB950] border border-[#3FB950]/30">
+                            <CheckCircle2 className="w-3 h-3" /> Active
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">
-                            <XCircle className="w-3.5 h-3.5" /> Inactive
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#F85149]/10 text-[#F85149] border border-[#F85149]/30">
+                            <XCircle className="w-3 h-3" /> Inactive
                           </span>
                         )}
                       </td>
 
                       {/* Joined Date */}
-                      <td className="py-4 px-4 text-xs text-slate-400">
+                      <td className="py-3 px-3 text-[11px] text-[#718096] font-mono">
                         {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}
                       </td>
 
                       {/* Actions */}
-                      <td className="py-4 px-6 text-right space-x-2">
+                      <td className="py-3 px-4 text-right space-x-1">
                         <button
                           onClick={() => openEditModal(u)}
-                          className="p-2 text-slate-400 hover:text-brand-400 hover:bg-brand-500/10 rounded-lg transition"
+                          className="p-1 text-[#718096] hover:text-[#4F7CFF] rounded hover:bg-[#17212B] transition-colors"
                           title="Edit User Profile"
                         >
-                          <Edit3 className="w-4 h-4" />
+                          <Edit3 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => setDeletingUser(u)}
-                          className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
+                          className="p-1 text-[#718096] hover:text-[#F85149] rounded hover:bg-[#17212B] transition-colors"
                           title="Delete User"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </td>
                     </tr>
@@ -379,99 +374,99 @@ export const AdminView: React.FC = () => {
 
       {/* ADD USER MODAL */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-6 shadow-2xl relative">
+        <div className="fixed inset-0 z-50 bg-[#0B0F14]/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#111820] border border-[#26313C] w-full max-w-md rounded-xl p-5 shadow-xl relative">
             <button
               onClick={() => setShowAddModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white"
+              className="absolute top-4 right-4 text-[#718096] hover:text-[#F1F5F9]"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
-            <h2 className="text-xl font-bold text-white mb-4">Add New User Account</h2>
+            <h2 className="text-base font-semibold text-[#F1F5F9] mb-4">Add New User Account</h2>
 
-            <form onSubmit={handleAddSubmit} className="space-y-4">
+            <form onSubmit={handleAddSubmit} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Full Name</label>
+                <label className="block text-xs font-medium text-[#A8B3C2] mb-1">Full Name</label>
                 <input
                   type="text"
                   required
                   value={addForm.full_name}
                   onChange={(e) => setAddForm({...addForm, full_name: e.target.value})}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-500"
+                  className="w-full saas-input"
                   placeholder="John Doe"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Email Address</label>
+                <label className="block text-xs font-medium text-[#A8B3C2] mb-1">Email Address</label>
                 <input
                   type="email"
                   required
                   value={addForm.email}
                   onChange={(e) => setAddForm({...addForm, email: e.target.value})}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-500"
+                  className="w-full saas-input"
                   placeholder="user@example.com"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Password</label>
+                <label className="block text-xs font-medium text-[#A8B3C2] mb-1">Password</label>
                 <input
                   type="password"
                   required
                   minLength={6}
                   value={addForm.password}
                   onChange={(e) => setAddForm({...addForm, password: e.target.value})}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-500"
+                  className="w-full saas-input"
                   placeholder="At least 6 characters"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Height (cm)</label>
+                  <label className="block text-xs font-medium text-[#A8B3C2] mb-1">Height (cm)</label>
                   <input
                     type="number"
                     value={addForm.height}
                     onChange={(e) => setAddForm({...addForm, height: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500"
+                    className="w-full saas-input"
                     placeholder="175"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Weight (kg)</label>
+                  <label className="block text-xs font-medium text-[#A8B3C2] mb-1">Weight (kg)</label>
                   <input
                     type="number"
                     value={addForm.weight}
                     onChange={(e) => setAddForm({...addForm, weight: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500"
+                    className="w-full saas-input"
                     placeholder="70"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Health Goal</label>
+                <label className="block text-xs font-medium text-[#A8B3C2] mb-1">Health Goal</label>
                 <input
                   type="text"
                   value={addForm.health_goal}
                   onChange={(e) => setAddForm({...addForm, health_goal: e.target.value})}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-500"
+                  className="w-full saas-input"
                   placeholder="e.g. Build muscle & 10k steps daily"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3">
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#26313C]">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-sm font-medium hover:bg-slate-700"
+                  className="saas-button-secondary"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-brand-600 text-white rounded-xl text-sm font-semibold hover:bg-brand-500 shadow-lg shadow-brand-600/30"
+                  className="saas-button-primary"
                 >
                   Create Account
                 </button>
@@ -483,117 +478,117 @@ export const AdminView: React.FC = () => {
 
       {/* EDIT USER MODAL */}
       {editingUser && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-6 shadow-2xl relative">
+        <div className="fixed inset-0 z-50 bg-[#0B0F14]/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#111820] border border-[#26313C] w-full max-w-lg rounded-xl p-5 shadow-xl relative">
             <button
               onClick={() => setEditingUser(null)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white"
+              className="absolute top-4 right-4 text-[#718096] hover:text-[#F1F5F9]"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
-            <h2 className="text-xl font-bold text-white mb-4">Edit User Profile</h2>
+            <h2 className="text-base font-semibold text-[#F1F5F9] mb-4">Edit User Profile</h2>
 
-            <form onSubmit={handleEditSubmit} className="space-y-4">
+            <form onSubmit={handleEditSubmit} className="space-y-3.5">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Full Name</label>
+                  <label className="block text-xs font-medium text-[#A8B3C2] mb-1">Full Name</label>
                   <input
                     type="text"
                     required
                     value={editForm.full_name}
                     onChange={(e) => setEditForm({...editForm, full_name: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
+                    className="w-full saas-input"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Email</label>
+                  <label className="block text-xs font-medium text-[#A8B3C2] mb-1">Email</label>
                   <input
                     type="email"
                     required
                     value={editForm.email}
                     onChange={(e) => setEditForm({...editForm, email: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
+                    className="w-full saas-input"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Level</label>
+                  <label className="block text-xs font-medium text-[#A8B3C2] mb-1">Level</label>
                   <input
                     type="number"
                     min={1}
                     value={editForm.level}
                     onChange={(e) => setEditForm({...editForm, level: Number(e.target.value)})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
+                    className="w-full saas-input"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">XP Points</label>
+                  <label className="block text-xs font-medium text-[#A8B3C2] mb-1">XP Points</label>
                   <input
                     type="number"
                     min={0}
                     value={editForm.xp}
                     onChange={(e) => setEditForm({...editForm, xp: Number(e.target.value)})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
+                    className="w-full saas-input"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Height (cm)</label>
+                  <label className="block text-xs font-medium text-[#A8B3C2] mb-1">Height (cm)</label>
                   <input
                     type="number"
                     value={editForm.height}
                     onChange={(e) => setEditForm({...editForm, height: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
+                    className="w-full saas-input"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Weight (kg)</label>
+                  <label className="block text-xs font-medium text-[#A8B3C2] mb-1">Weight (kg)</label>
                   <input
                     type="number"
                     value={editForm.weight}
                     onChange={(e) => setEditForm({...editForm, weight: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
+                    className="w-full saas-input"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Health Goal</label>
+                <label className="block text-xs font-medium text-[#A8B3C2] mb-1">Health Goal</label>
                 <input
                   type="text"
                   value={editForm.health_goal}
                   onChange={(e) => setEditForm({...editForm, health_goal: e.target.value})}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none"
+                  className="w-full saas-input"
                 />
               </div>
 
-              <div className="flex items-center gap-3 pt-2">
-                <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-300">
+              <div className="flex items-center gap-2 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer text-xs text-[#A8B3C2]">
                   <input
                     type="checkbox"
                     checked={editForm.is_active}
                     onChange={(e) => setEditForm({...editForm, is_active: e.target.checked})}
-                    className="rounded bg-slate-950 border-slate-800 text-brand-500 focus:ring-0"
+                    className="rounded bg-[#17212B] border-[#26313C] text-[#4F7CFF] focus:ring-0"
                   />
                   <span>Account Active</span>
                 </label>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3">
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#26313C]">
                 <button
                   type="button"
                   onClick={() => setEditingUser(null)}
-                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-sm font-medium hover:bg-slate-700"
+                  className="saas-button-secondary"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-brand-600 text-white rounded-xl text-sm font-semibold hover:bg-brand-500"
+                  className="saas-button-primary"
                 >
                   Save Changes
                 </button>
@@ -605,26 +600,26 @@ export const AdminView: React.FC = () => {
 
       {/* DELETE USER CONFIRMATION MODAL */}
       {deletingUser && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl p-6 shadow-2xl text-center">
-            <div className="w-12 h-12 rounded-full bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto mb-4 border border-rose-500/20">
-              <Trash2 className="w-6 h-6" />
+        <div className="fixed inset-0 z-50 bg-[#0B0F14]/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#111820] border border-[#26313C] w-full max-w-sm rounded-xl p-5 shadow-xl text-center">
+            <div className="w-10 h-10 rounded-lg bg-[#F85149]/10 text-[#F85149] flex items-center justify-center mx-auto mb-3 border border-[#F85149]/20">
+              <Trash2 className="w-5 h-5" />
             </div>
-            <h2 className="text-lg font-bold text-white mb-2">Delete User Account?</h2>
-            <p className="text-slate-400 text-xs mb-6">
-              Are you sure you want to permanently delete <strong className="text-white">{deletingUser.full_name}</strong> ({deletingUser.email})? This action cannot be undone.
+            <h2 className="text-base font-semibold text-[#F1F5F9] mb-1.5">Delete User Account?</h2>
+            <p className="text-[#A8B3C2] text-xs mb-5">
+              Are you sure you want to permanently delete <strong className="text-[#F1F5F9]">{deletingUser.full_name}</strong> ({deletingUser.email})? This action cannot be undone.
             </p>
 
-            <div className="flex items-center justify-center gap-3">
+            <div className="flex items-center justify-end gap-2.5">
               <button
                 onClick={() => setDeletingUser(null)}
-                className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-sm font-medium hover:bg-slate-700"
+                className="saas-button-secondary"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteConfirm}
-                className="px-5 py-2 bg-rose-600 text-white rounded-xl text-sm font-semibold hover:bg-rose-500 shadow-lg shadow-rose-600/30"
+                className="saas-button-danger"
               >
                 Delete Account
               </button>
@@ -635,3 +630,5 @@ export const AdminView: React.FC = () => {
     </div>
   );
 };
+
+export default AdminView;

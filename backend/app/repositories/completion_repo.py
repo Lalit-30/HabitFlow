@@ -92,3 +92,17 @@ class CompletionRepository:
         if end_date:
             query = query.filter(HabitCompletion.completed_date <= end_date)
         return query.order_by(HabitCompletion.completed_date.asc()).all()
+
+    @staticmethod
+    def get_recent_user_completions(
+        db: Session,
+        user_id: str,
+        limit: int = 10
+    ) -> List[HabitCompletion]:
+        """
+        Efficiently fetches the N most recent completion records for a user using database sorting and LIMIT.
+        """
+        return db.query(HabitCompletion).filter(
+            HabitCompletion.user_id == user_id
+        ).order_by(HabitCompletion.completed_date.desc()).limit(limit).all()
+

@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 import pytest
 
 
@@ -127,3 +128,49 @@ def test_archive_and_restore_habit(client):
     restore_res = client.patch(f"/api/v1/habits/{habit_id}/restore", headers=headers)
     assert restore_res.status_code == 200
     assert restore_res.json()["is_archived"] is False
+
+
+def test_update_habit(client):
+    token = get_auth_token(client, email="updatehabit@example.com")
+    headers = {"Authorization": f"Bearer {token}"}
+    cat_id = client.get("/api/v1/categories", headers=headers).json()[0]["id"]
+
+    habit = client.post("/api/v1/habits", headers=headers, json={
+        "category_id": cat_id,
+        "name": "Initial Name",
+        "target_count": 10
+    }).json()
+    habit_id = habit["id"]
+
+    # Update habit name and target
+    update_res = client.put(f"/api/v1/habits/{habit_id}", headers=headers, json={
+        "name": "Updated Name",
+        "target_count": 25,
+        "target_unit": "minutes"
+    })
+    assert update_res.status_code == 200
+    updated_data = update_res.json()
+    assert updated_data["name"] == "Updated Name"
+    assert updated_data["target_count"] == 25
+    assert updated_data["target_unit"] == "minutes"
+
+
+def test_delete_habit_permanently(client):
+    token = get_auth_token(client, email="deletehabit@example.com")
+    headers = {"Authorization": f"Bearer {token}"}
+    cat_id = client.get("/api/v1/categories", headers=headers).json()[0]["id"]
+
+    habit = client.post("/api/v1/habits", headers=headers, json={
+        "category_id": cat_id,
+        "name": "Habit To Delete"
+    }).json()
+    habit_id = habit["id"]
+
+    # Delete habit
+    del_res = client.delete(f"/api/v1/habits/{habit_id}", headers=headers)
+    assert del_res.status_code == 200
+
+    # Fetch should return 404
+    get_res = client.get(f"/api/v1/habits/{habit_id}", headers=headers)
+    assert get_res.status_code == 404
+

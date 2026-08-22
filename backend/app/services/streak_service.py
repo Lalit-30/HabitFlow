@@ -18,7 +18,17 @@ class StreakService:
     def calculate_habit_stats(db: Session, habit: Habit, target_date: date = None) -> Dict[str, Any]:
         """
         Calculates current streak, longest streak, total completions, and completion rate
-        for a habit handling daily, weekly, and custom schedule days.
+        for a habit by fetching completions from DB.
+        """
+        completions = CompletionRepository.list_for_habit(db, habit_id=habit.id)
+        completed_dates: Set[date] = {c.completed_date for c in completions if c.status == "completed"}
+        return StreakService.calculate_habit_stats_from_dates(habit=habit, completed_dates=completed_dates, target_date=target_date)
+
+    @staticmethod
+    def calculate_habit_stats_from_dates(habit: Habit, completed_dates: Set[date], target_date: date = None) -> Dict[str, Any]:
+        """
+        Pure in-memory stats calculation given a pre-loaded set of completed_dates.
+        Prevents N+1 database queries when processing lists of habits.
         """
         if target_date is None:
             target_date = date.today()
@@ -26,9 +36,6 @@ class StreakService:
         scheduled_days: Set[int] = {s.day_of_week for s in habit.schedules} if habit.schedules else set(range(7))
         if not scheduled_days:
             scheduled_days = set(range(7))
-
-        completions = CompletionRepository.list_for_habit(db, habit_id=habit.id)
-        completed_dates: Set[date] = {c.completed_date for c in completions if c.status == "completed"}
 
         # -------------------------------------------------------------
         # 1. Current Streak Calculation (backwards from target_date)

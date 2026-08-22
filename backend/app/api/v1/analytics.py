@@ -36,6 +36,17 @@ def get_analytics_report(
     )
     completion_lookup = {(c.habit_id, c.completed_date): c for c in completions}
 
+    # Build in-memory completion set and habit-category mapping to eliminate N+1 SQL queries
+    completions_by_habit = {}
+    habit_category_map = {h.id: h.category_id for h in habits}
+    for h in habits:
+        completions_by_habit[h.id] = set()
+
+    for c in completions:
+        if c.status == "completed":
+            if c.habit_id in completions_by_habit:
+                completions_by_habit[c.habit_id].add(c.completed_date)
+
     # 1. Day by day trend with dynamic x-axis label formatting
     trend_data = []
     curr = start_date
@@ -55,9 +66,6 @@ def get_analytics_report(
 
         rate = round((tot_comp / tot_sched * 100), 1) if tot_sched > 0 else 0.0
 
-        # Label formatting rule:
-        # If range == '7d': use short day name ("Mon", "Tue")
-        # If range in ('30d', '3m', '1y'): format as "DD MMM" (e.g. "17 Aug", "01 Sep")
         if time_range == "7d":
             label = DAY_NAMES[dow]
         else:
@@ -72,14 +80,15 @@ def get_analytics_report(
         })
         curr += timedelta(days=1)
 
-    # 2. Category Breakdown
+    # 2. Category Breakdown (using preloaded habit_category_map)
     categories = CategoryRepository.list_all_for_user(db, user_id=current_user.id)
     cat_map = {c.id: c for c in categories}
     cat_counts = {}
     for c in completions:
-        if c.status == "completed" and c.habit:
-            cat_id = c.habit.category_id
-            cat_counts[cat_id] = cat_counts.get(cat_id, 0) + 1
+        if c.status == "completed":
+            cat_id = habit_category_map.get(c.habit_id)
+            if cat_id:
+                cat_counts[cat_id] = cat_counts.get(cat_id, 0) + 1
 
     tot_all_comp = sum(cat_counts.values())
     category_breakdown = []
@@ -95,10 +104,11 @@ def get_analytics_report(
                 "percentage": round((count / tot_all_comp * 100), 1) if tot_all_comp > 0 else 0.0
             })
 
-    # 3. Habit performance leaderboard
+    # 3. Habit performance leaderboard (using in-memory streak calculation)
     habit_performances = []
     for h in habits:
-        stats = StreakService.calculate_habit_stats(db, habit=h)
+        completed_dates = completions_by_habit.get(h.id, set())
+        stats = StreakService.calculate_habit_stats_from_dates(habit=h, completed_dates=completed_dates)
         habit_performances.append({
             "id": h.id,
             "name": h.name,

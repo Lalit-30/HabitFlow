@@ -1,19 +1,37 @@
-import React, { useEffect, useState } from 'react';
-import { Flame, Trophy, CheckCircle2, Plus, Activity } from 'lucide-react';
-import { api } from '../services/api';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { 
+  Plus, 
+  Flame, 
+  Target, 
+  TrendingUp, 
+  CheckCircle2, 
+  Activity, 
+  Trophy,
+  AlertCircle,
+  RefreshCw
+} from 'lucide-react';
+import { api, parseApiError } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { DashboardSummary, Category } from '../types';
+import { useToast } from '../context/ToastContext';
+import { useHabitActions } from '../hooks/useHabitActions';
+import { DashboardSummary, Category, Habit } from '../types';
 import { HabitCard } from '../components/HabitCard';
 import { CreateHabitModal } from '../components/CreateHabitModal';
+import { DashboardSkeleton } from '../components/DashboardSkeleton';
 
 export const Dashboard: React.FC = () => {
-  const { user, refetchUser } = useAuth();
+  const { user } = useAuth();
+  const { showToast } = useToast();
   const [data, setData] = useState<DashboardSummary | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
+  const [filterTab, setFilterTab] = useState<'all' | 'pending' | 'completed'>('all');
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const [dashRes, catRes] = await Promise.all([
         api.get<DashboardSummary>('/dashboard'),
@@ -21,200 +39,319 @@ export const Dashboard: React.FC = () => {
       ]);
       setData(dashRes.data);
       setCategories(catRes.data);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load dashboard:', err);
+      const msg = parseApiError(err, 'Failed to load dashboard data. Please try again.');
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
+
+  const { toggleComplete, pendingHabitIds } = useHabitActions(fetchDashboardData);
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [fetchDashboardData]);
 
-  const handleToggleComplete = async (habitId: string, currentlyCompleted: boolean) => {
-    try {
-      const todayStr = new Date().toISOString().split('T')[0];
-      if (currentlyCompleted) {
-        await api.delete(`/habits/${habitId}/complete/${todayStr}`);
-      } else {
-        await api.post(`/habits/${habitId}/complete`, {
-          completed_date: todayStr,
-          status: 'completed'
-        });
-      }
-      await fetchDashboardData();
-      await refetchUser();
-    } catch (err) {
-      console.error('Failed to toggle completion:', err);
+  const handleToggleComplete = async (habitId: string, currentCompleted: boolean) => {
+    await toggleComplete(habitId, currentCompleted);
+  };
+
+  const habitsToday: Habit[] = useMemo(() => data?.today_habits || [], [data?.today_habits]);
+  const completedCount = useMemo(() => habitsToday.filter((h: Habit) => h.is_completed_today).length, [habitsToday]);
+  const totalCount = habitsToday.length;
+
+  const filteredHabits = useMemo(() => {
+    if (filterTab === 'pending') {
+      return habitsToday.filter((h: Habit) => !h.is_completed_today);
     }
-  };
+    if (filterTab === 'completed') {
+      return habitsToday.filter((h: Habit) => h.is_completed_today);
+    }
+    return habitsToday;
+  }, [habitsToday, filterTab]);
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 18) return 'Good Afternoon';
-    return 'Good Evening';
-  };
+  if (loading && !data) {
+    return <DashboardSkeleton />;
+  }
 
-  if (loading) {
+  if (error && !data) {
     return (
-      <div className="flex items-center justify-center h-full min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-brand-500" />
+      <div className="p-8 text-center saas-panel border border-[#26313C] max-w-lg mx-auto my-12 space-y-4">
+        <AlertCircle className="w-10 h-10 text-[#F85149] mx-auto" />
+        <h2 className="text-base font-semibold text-[#F1F5F9]">Failed to Load Dashboard</h2>
+        <p className="text-xs text-[#A8B3C2]">{error}</p>
+        <button
+          onClick={fetchDashboardData}
+          className="saas-button-primary mx-auto"
+        >
+          <RefreshCw className="w-4 h-4" />
+          <span>Retry Connection</span>
+        </button>
       </div>
     );
   }
 
   const completionPct = data?.completion_percentage || 0;
+  const radius = 36;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (completionPct / 100) * circumference;
+  const recentWeekDays = data?.recent_week_days || [];
 
   return (
-    <div className="space-y-8">
-      {/* Welcome & Progress Banner */}
-      <div className="glass-panel p-8 relative overflow-hidden border border-slate-800 bg-gradient-to-r from-slate-900 via-slate-900/90 to-brand-950/40">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
-          <div>
-            <div className="flex items-center gap-2 text-brand-400 font-semibold text-xs tracking-wider uppercase mb-1">
-              <span>Daily Overview</span>
+    <div className="space-y-6 animate-pageEnter">
+      {/* Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#26313C] pb-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#F1F5F9] tracking-tight">
+            Welcome back, {user?.full_name?.split(' ')[0]} 👋
+          </h1>
+          <p className="text-xs sm:text-sm text-[#A8B3C2] mt-0.5">
+            Daily consistency overview for {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}.
+          </p>
+        </div>
+
+        <button
+          onClick={() => setModalOpen(true)}
+          className="saas-button-primary shrink-0"
+        >
+          <Plus className="w-4 h-4" />
+          <span>New Habit</span>
+        </button>
+      </div>
+
+      {/* Primary Hero Section: Execution Ring & Stats Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Execution Rate Ring Card */}
+        <div className="saas-panel p-5 flex flex-col justify-between items-center text-center lg:text-left lg:flex-row lg:items-center gap-5">
+          <div className="relative flex items-center justify-center shrink-0">
+            <svg className="w-24 h-24 transform -rotate-90">
+              <circle
+                cx="48"
+                cy="48"
+                r={radius}
+                stroke="#17212B"
+                strokeWidth="7"
+                fill="transparent"
+              />
+              <circle
+                cx="48"
+                cy="48"
+                r={radius}
+                stroke="#3FB950"
+                strokeWidth="7"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                fill="transparent"
+                className="transition-all duration-700 ease-out"
+              />
+            </svg>
+            <div className="absolute flex flex-col items-center justify-center">
+              <span className="text-lg font-bold text-[#F1F5F9] font-mono">{Math.round(completionPct)}%</span>
+              <span className="text-[9px] text-[#718096] uppercase tracking-wider font-medium">Today</span>
             </div>
-            <h1 className="text-3xl font-extrabold text-white tracking-tight">
-              {getGreeting()}, {user?.full_name?.split(' ')[0]}!
-            </h1>
-            <p className="text-sm text-slate-400 mt-1">
-              You've completed <span className="text-emerald-400 font-semibold">{data?.completed_today} of {data?.total_scheduled_today}</span> habits scheduled for today.
-            </p>
           </div>
 
-          <button
-            onClick={() => setModalOpen(true)}
-            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm shadow-lg shadow-brand-500/25 transition-all transform hover:-translate-y-0.5"
-          >
-            <Plus className="w-5 h-5" />
-            <span>New Habit</span>
-          </button>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mt-6 pt-6 border-t border-slate-800/80">
-          <div className="flex justify-between items-center text-xs font-semibold mb-2">
-            <span className="text-slate-400">Today's Progress</span>
-            <span className="text-brand-400 font-mono">{completionPct}%</span>
-          </div>
-          <div className="w-full bg-slate-800/80 h-3 rounded-full overflow-hidden p-0.5">
-            <div
-              className="bg-gradient-to-r from-brand-500 to-emerald-400 h-full rounded-full transition-all duration-700 shadow-sm"
-              style={{ width: `${completionPct}%` }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Enlarged Metric Cards Grid with Hover Effects */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Today's Stats */}
-        <div className="glass-panel p-8 flex items-center gap-5 border border-slate-800 hover:border-emerald-500/50 hover:shadow-2xl hover:shadow-emerald-500/10 hover:scale-[1.03] transition-all duration-300 group cursor-pointer">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 group-hover:bg-emerald-500/20 transition-transform">
-            <CheckCircle2 className="w-8 h-8" />
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Completed Today</p>
-            <p className="text-3xl font-black text-white font-mono mt-1">
-              {data?.completed_today} <span className="text-sm font-normal text-slate-500">/ {data?.total_scheduled_today}</span>
-            </p>
+          <div className="space-y-1 flex-1 min-w-0">
+            <span className="text-[11px] font-semibold text-[#3FB950] uppercase tracking-wider">Today's Execution</span>
+            <h2 className="text-base font-semibold text-[#F1F5F9]">
+              {completedCount} of {totalCount} habits completed
+            </h2>
+            {completedCount === totalCount && totalCount > 0 ? (
+              <p className="text-xs text-[#3FB950] flex items-center gap-1.5 pt-0.5">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>100% Execution Achieved!</span>
+              </p>
+            ) : (
+              <p className="text-xs text-[#A8B3C2]">Keep up the momentum to build consistency.</p>
+            )}
           </div>
         </div>
 
-        {/* Current Streak */}
-        <div className="glass-panel p-8 flex items-center gap-5 border border-amber-500/20 hover:border-amber-500/50 hover:shadow-2xl hover:shadow-amber-500/10 hover:scale-[1.03] transition-all duration-300 group cursor-pointer">
-          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-110 group-hover:bg-amber-500/20 transition-transform">
-            <Flame className="w-8 h-8 fill-amber-400" />
+        {/* Quick KPI Stat Cards */}
+        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="saas-card p-4 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-[#D29922]/10 border border-[#D29922]/20 flex items-center justify-center text-[#D29922]">
+              <Flame className="w-4 h-4 fill-[#D29922]" />
+            </div>
+            <div>
+              <p className="text-xs text-[#718096] font-medium">Current Streak</p>
+              <p className="text-base font-bold text-[#F1F5F9] font-mono">{data?.current_max_streak || 0} Days</p>
+              <p className="text-[11px] text-[#A8B3C2] truncate">Active Routine Streak</p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Max Streak</p>
-            <p className="text-3xl font-black text-white font-mono mt-1">
-              {data?.current_max_streak} <span className="text-sm font-normal text-slate-500">days</span>
-            </p>
-          </div>
-        </div>
 
-        {/* Best Streak */}
-        <div className="glass-panel p-8 flex items-center gap-5 border border-indigo-500/20 hover:border-indigo-500/50 hover:shadow-2xl hover:shadow-indigo-500/10 hover:scale-[1.03] transition-all duration-300 group cursor-pointer">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:scale-110 group-hover:bg-indigo-500/20 transition-transform">
-            <Trophy className="w-8 h-8" />
+          <div className="saas-card p-4 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-[#4F7CFF]/10 border border-[#4F7CFF]/20 flex items-center justify-center text-[#4F7CFF]">
+              <Trophy className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-xs text-[#718096] font-medium">Best Record</p>
+              <p className="text-base font-bold text-[#F1F5F9] font-mono">{data?.best_ever_streak || 0} Days</p>
+              <p className="text-[11px] text-[#A8B3C2] truncate">All-Time Max Streak</p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Best Ever Streak</p>
-            <p className="text-3xl font-black text-white font-mono mt-1">
-              {data?.best_ever_streak} <span className="text-sm font-normal text-slate-500">days</span>
-            </p>
+
+          <div className="saas-card p-4 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-[#3FB950]/10 border border-[#3FB950]/20 flex items-center justify-center text-[#3FB950]">
+              <Target className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-xs text-[#718096] font-medium">Scheduled Today</p>
+              <p className="text-base font-bold text-[#F1F5F9] font-mono">{totalCount} Habits</p>
+              <p className="text-[11px] text-[#A8B3C2] truncate">Daily Routine Goal</p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Today's Habits Checklist (2 Columns) */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-white">Today's Scheduled Habits</h2>
-            <span className="text-xs font-mono bg-slate-850 px-3 py-1 rounded-full text-slate-400 border border-slate-800">
-              {data?.today_habits?.length || 0} habits
-            </span>
+      {/* Main Content Dashboard Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Left Section: Today's Habit Checklist (2 Columns) */}
+        <div className="lg:col-span-2 space-y-3.5">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <h2 className="text-base font-semibold text-[#F1F5F9]">Today's Habits</h2>
+
+            {/* Filter Tabs */}
+            <div className="flex items-center gap-1 bg-[#111820] p-1 rounded-lg border border-[#26313C] text-xs">
+              <button
+                onClick={() => setFilterTab('all')}
+                className={`px-3 py-1 rounded font-medium transition-colors ${
+                  filterTab === 'all'
+                    ? 'bg-[#17212B] text-[#F1F5F9]'
+                    : 'text-[#718096] hover:text-[#A8B3C2]'
+                }`}
+              >
+                All ({totalCount})
+              </button>
+              <button
+                onClick={() => setFilterTab('pending')}
+                className={`px-3 py-1 rounded font-medium transition-colors ${
+                  filterTab === 'pending'
+                    ? 'bg-[#17212B] text-[#F1F5F9]'
+                    : 'text-[#718096] hover:text-[#A8B3C2]'
+                }`}
+              >
+                Pending ({totalCount - completedCount})
+              </button>
+              <button
+                onClick={() => setFilterTab('completed')}
+                className={`px-3 py-1 rounded font-medium transition-colors ${
+                  filterTab === 'completed'
+                    ? 'bg-[#17212B] text-[#F1F5F9]'
+                    : 'text-[#718096] hover:text-[#A8B3C2]'
+                }`}
+              >
+                Done ({completedCount})
+              </button>
+            </div>
           </div>
 
-          {data?.today_habits && data.today_habits.length > 0 ? (
-            <div className="space-y-4">
-              {data.today_habits.map((habit) => (
+          {filteredHabits.length > 0 ? (
+            <div className="space-y-3">
+              {filteredHabits.map((habit: Habit) => (
                 <HabitCard
                   key={habit.id}
                   habit={habit}
+                  isPending={pendingHabitIds.has(habit.id)}
                   onToggleComplete={handleToggleComplete}
                 />
               ))}
             </div>
           ) : (
-            <div className="glass-panel p-12 text-center space-y-3">
-              <CheckCircle2 className="w-12 h-12 text-slate-600 mx-auto" />
-              <h3 className="text-lg font-semibold text-slate-300">No habits scheduled for today</h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                Enjoy your off day or create a new daily habit to build consistency.
+            <div className="saas-panel p-8 text-center space-y-2 border border-[#26313C]">
+              <CheckCircle2 className="w-8 h-8 text-[#718096] mx-auto" />
+              <h3 className="text-sm font-medium text-[#F1F5F9]">
+                {filterTab === 'pending'
+                  ? 'All habits completed for today!'
+                  : filterTab === 'completed'
+                  ? 'No habits completed yet today.'
+                  : 'No habits scheduled for today.'}
+              </h3>
+              <p className="text-xs text-[#718096] max-w-xs mx-auto">
+                {filterTab === 'pending'
+                  ? 'You are all caught up! Great effort maintaining your daily routines.'
+                  : 'Create a new daily habit to build consistency.'}
               </p>
-              <button
-                onClick={() => setModalOpen(true)}
-                className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold border border-slate-700"
-              >
-                <Plus className="w-4 h-4" /> Create Habit
-              </button>
+              {filterTab === 'all' && (
+                <button
+                  onClick={() => setModalOpen(true)}
+                  className="mt-2 saas-button-primary mx-auto"
+                >
+                  <Plus className="w-4 h-4" /> Create Habit
+                </button>
+              )}
             </div>
           )}
         </div>
 
-        {/* Recent Activity Feed (1 Column) */}
+        {/* Right Section: Weekly Analytics & Activity Feed (1 Column) */}
         <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Activity className="w-5 h-5 text-brand-400" />
-            <h2 className="text-xl font-bold text-white">Recent Activity</h2>
+          {/* Weekly Consistency Dot Matrix Widget */}
+          <div className="saas-panel p-4 border border-[#26313C] space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-[#4F7CFF]" />
+                <h3 className="text-xs font-semibold text-[#F1F5F9]">7-Day Consistency</h3>
+              </div>
+              <span className="text-[10px] text-[#718096] font-mono">This Week</span>
+            </div>
+
+            {recentWeekDays.length > 0 ? (
+              <div className="grid grid-cols-7 gap-1.5 text-center">
+                {recentWeekDays.map((d: any) => {
+                  const rate = d.completion_percentage;
+                  let colorClass = 'bg-[#17212B] border-[#26313C] text-[#718096]';
+                  if (d.total_scheduled > 0) {
+                    if (rate === 100) colorClass = 'bg-[#3FB950]/20 border-[#3FB950]/40 text-[#3FB950]';
+                    else if (rate >= 50) colorClass = 'bg-[#4F7CFF]/20 border-[#4F7CFF]/40 text-[#4F7CFF]';
+                    else if (rate > 0) colorClass = 'bg-[#D29922]/20 border-[#D29922]/40 text-[#D29922]';
+                  }
+
+                  return (
+                    <div key={d.date} className="flex flex-col items-center gap-1">
+                      <span className="text-[10px] text-[#718096] font-mono">
+                        {d.date.split('-')[2]}
+                      </span>
+                      <div
+                        className={`w-full h-7 rounded border flex items-center justify-center font-mono text-[10px] font-semibold ${colorClass}`}
+                        title={`${d.date}: ${d.completed_count}/${d.total_scheduled} completed (${rate}%)`}
+                      >
+                        {d.completed_count}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-[#718096] text-center py-3">No recent activity recorded.</p>
+            )}
           </div>
 
-          <div className="glass-panel p-5 space-y-4 border border-slate-800">
+          {/* Recent Activity Log */}
+          <div className="saas-panel p-4 space-y-3 border border-[#26313C]">
+            <div className="flex items-center gap-2">
+              <Activity className="w-4 h-4 text-[#4F7CFF]" />
+              <h3 className="text-xs font-semibold text-[#F1F5F9]">Recent Activity</h3>
+            </div>
+
             {data?.recent_activity && data.recent_activity.length > 0 ? (
-              <div className="space-y-3">
-                {data.recent_activity.map((act) => (
-                  <div key={act.completion_id} className="flex items-start gap-3 p-3 rounded-xl bg-slate-850/50 border border-slate-800/50 text-xs">
-                    <div className="w-2 h-2 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-slate-200 truncate">{act.habit_name}</p>
-                      <p className="text-slate-500 text-[11px] font-mono mt-0.5">{act.completed_date}</p>
-                      {act.notes && (
-                        <p className="text-slate-400 text-[11px] italic mt-1 bg-slate-900 p-1.5 rounded border border-slate-800">
-                          "{act.notes}"
-                        </p>
-                      )}
+              <div className="space-y-2">
+                {data.recent_activity.slice(0, 5).map((act) => (
+                  <div key={act.completion_id} className="flex items-center justify-between p-2 rounded bg-[#17212B] border border-[#26313C] text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#3FB950] shrink-0" />
+                      <span className="font-medium text-[#F1F5F9] truncate">{act.habit_name}</span>
                     </div>
+                    <span className="text-[10px] font-mono text-[#718096] shrink-0">{act.completed_date}</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-slate-500 text-center py-6">No recent completion logs yet.</p>
+              <p className="text-xs text-[#718096] text-center py-3">No completion logs recorded yet.</p>
             )}
           </div>
         </div>
@@ -224,9 +361,14 @@ export const Dashboard: React.FC = () => {
       <CreateHabitModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        onSuccess={fetchDashboardData}
+        onSuccess={() => {
+          fetchDashboardData();
+          showToast('New habit created successfully!', 'success');
+        }}
         categories={categories}
       />
     </div>
   );
 };
+
+export default Dashboard;

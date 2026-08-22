@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { X, Check } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Check, AlertCircle } from 'lucide-react';
 import { Category, Habit } from '../types';
-import { api } from '../services/api';
+import { api, parseApiError } from '../services/api';
 
 interface CreateHabitModalProps {
   isOpen: boolean;
@@ -43,9 +43,27 @@ export const CreateHabitModal: React.FC<CreateHabitModalProps> = ({
   const [targetUnit, setTargetUnit] = useState('times');
   const [color, setColor] = useState('#3B82F6');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [serverError, setServerError] = useState('');
 
-  // Fetch categories if list is empty
+  const firstInputRef = useRef<HTMLInputElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
+
+  const [fieldErrors, setFieldErrors] = useState<{
+    name?: string;
+    targetCount?: string;
+    daysOfWeek?: string;
+  }>({});
+
+  // Focus Management: Save trigger element & restore focus on modal close
+  useEffect(() => {
+    if (isOpen) {
+      triggerRef.current = document.activeElement as HTMLElement;
+      setTimeout(() => firstInputRef.current?.focus(), 50);
+    } else if (triggerRef.current) {
+      triggerRef.current.focus();
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (isOpen) {
       if (initialCategories && initialCategories.length > 0) {
@@ -82,35 +100,70 @@ export const CreateHabitModal: React.FC<CreateHabitModalProps> = ({
       setTargetUnit('times');
       setColor('#3B82F6');
     }
+    setFieldErrors({});
+    setServerError('');
   }, [editingHabit, categoriesList, isOpen]);
+
+  // Handle ESC key listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   const toggleDay = (day: number) => {
+    let updated: number[];
     if (daysOfWeek.includes(day)) {
-      if (daysOfWeek.length > 1) {
-        setDaysOfWeek(daysOfWeek.filter((d) => d !== day));
-      }
+      updated = daysOfWeek.filter((d) => d !== day);
     } else {
-      setDaysOfWeek([...daysOfWeek, day]);
+      updated = [...daysOfWeek, day].sort();
     }
+    setDaysOfWeek(updated);
+    if (updated.length > 0) {
+      setFieldErrors((prev) => ({ ...prev, daysOfWeek: undefined }));
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const errors: { name?: string; targetCount?: string; daysOfWeek?: string } = {};
+
+    if (!name.trim()) {
+      errors.name = 'Habit name is required.';
+    } else if (name.trim().length < 2) {
+      errors.name = 'Habit name must be at least 2 characters.';
+    }
+
+    if (targetCount < 1) {
+      errors.targetCount = 'Target count must be at least 1.';
+    }
+
+    if (frequencyType === 'custom' && daysOfWeek.length === 0) {
+      errors.daysOfWeek = 'Please select at least one day for custom frequency schedule.';
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      setError('Habit name is required.');
-      return;
-    }
-    
-    // Auto fallback to first category if unselected
+    if (!validateForm()) return;
+
     let selectedCat = categoryId;
     if (!selectedCat && categoriesList.length > 0) {
       selectedCat = categoriesList[0].id;
     }
 
     setLoading(true);
-    setError('');
+    setServerError('');
 
     try {
       const payload = {
@@ -134,63 +187,104 @@ export const CreateHabitModal: React.FC<CreateHabitModalProps> = ({
       onSuccess();
       onClose();
     } catch (err: any) {
-      let detail = err.response?.data?.detail;
-      let msg = 'Failed to save habit. Please check your inputs.';
-      if (typeof detail === 'string') {
-        msg = detail;
-      } else if (Array.isArray(detail)) {
-        msg = detail.map((d: any) => d.msg || d.detail).join(', ');
-      }
-      setError(msg);
+      const msg = parseApiError(err, 'Failed to save habit. Please check your inputs.');
+      setServerError(msg);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
-      <div className="glass-panel w-full max-w-lg p-6 relative border border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
-          <h2 className="text-xl font-bold text-white">
-            {editingHabit ? 'Edit Habit' : 'Create New Habit'}
-          </h2>
+    <div 
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#0B0F14]/80 backdrop-blur-xs animate-fadeIn"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+    >
+      <div className="bg-[#111820] w-full sm:max-w-lg p-5 sm:p-6 relative border border-[#26313C] shadow-xl max-h-[92vh] overflow-y-auto rounded-t-xl sm:rounded-xl animate-modalEnter">
+        <div className="flex items-center justify-between border-b border-[#26313C] pb-4 mb-5">
+          <div>
+            <h2 id="modal-title" className="text-lg font-semibold text-[#F1F5F9]">
+              {editingHabit ? 'Edit Habit' : 'Create New Habit'}
+            </h2>
+            <p className="text-xs text-[#718096] mt-0.5">
+              {editingHabit ? 'Update routine target & schedule parameters' : 'Define a consistent daily or custom routine target'}
+            </p>
+          </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+            className="p-1.5 text-[#718096] hover:text-[#F1F5F9] rounded-lg hover:bg-[#17212B] transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#4F7CFF]/30"
+            aria-label="Close dialog"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {error && (
-          <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-xl text-sm font-medium">
-            {error}
+        {serverError && (
+          <div className="mb-5 p-3 bg-[#F85149]/10 border border-[#F85149]/30 text-[#F85149] rounded-lg text-xs font-medium flex items-center gap-2" role="alert">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{serverError}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          {/* Habit Name */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-              Habit Name *
+            <div className="flex items-center justify-between mb-1">
+              <label htmlFor="habit-name" className="block text-xs font-medium text-[#A8B3C2]">
+                Habit Name <span className="text-[#F85149]">*</span>
+              </label>
+              <span className="text-[11px] text-[#718096]">e.g. Read 20 pages, Hydrate</span>
+            </div>
+            <input
+              id="habit-name"
+              ref={firstInputRef}
+              type="text"
+              placeholder="e.g. Morning Exercise, Drink Water"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: undefined }));
+              }}
+              className={`w-full saas-input ${
+                fieldErrors.name ? 'border-[#F85149]' : ''
+              }`}
+              aria-invalid={!!fieldErrors.name}
+              aria-describedby={fieldErrors.name ? 'habit-name-error' : undefined}
+            />
+            {fieldErrors.name && (
+              <p id="habit-name-error" className="text-xs text-[#F85149] mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{fieldErrors.name}</span>
+              </p>
+            )}
+          </div>
+
+          {/* Habit Description */}
+          <div>
+            <label htmlFor="habit-desc" className="block text-xs font-medium text-[#A8B3C2] mb-1">
+              Description / Motivation <span className="text-[#718096] font-normal lowercase">(optional)</span>
             </label>
             <input
+              id="habit-desc"
               type="text"
-              placeholder="e.g. Read 20 pages, Exercise, Drink water"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 text-sm"
-              required
+              placeholder="e.g. 2 liters daily for better energy & focus"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full saas-input"
             />
           </div>
 
+          {/* Category Selector */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+            <label htmlFor="habit-category" className="block text-xs font-medium text-[#A8B3C2] mb-1">
               Category
             </label>
             <select
+              id="habit-category"
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-brand-500 text-sm"
+              className="w-full saas-input cursor-pointer"
             >
               {categoriesList.map((cat) => (
                 <option key={cat.id} value={cat.id}>
@@ -200,40 +294,49 @@ export const CreateHabitModal: React.FC<CreateHabitModalProps> = ({
             </select>
           </div>
 
+          {/* Frequency Selector */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-              Schedule Frequency
-            </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-medium text-[#A8B3C2]">
+                Schedule Frequency
+              </label>
+              <span className="text-[11px] text-[#718096]">When should this repeat?</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
-                onClick={() => { setFrequencyType('daily'); setDaysOfWeek([0, 1, 2, 3, 4, 5, 6]); }}
-                className={`py-2.5 rounded-xl font-medium text-sm border transition-all ${
+                onClick={() => {
+                  setFrequencyType('daily');
+                  setDaysOfWeek([0, 1, 2, 3, 4, 5, 6]);
+                  setFieldErrors((prev) => ({ ...prev, daysOfWeek: undefined }));
+                }}
+                className={`py-2 px-3 rounded-lg text-xs font-medium border transition-colors ${
                   frequencyType === 'daily'
-                    ? 'bg-brand-600/20 border-brand-500 text-brand-400 font-semibold'
-                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-750'
+                    ? 'bg-[#17212B] border-[#4F7CFF] text-[#F1F5F9]'
+                    : 'bg-[#111820] border-[#26313C] text-[#A8B3C2] hover:text-[#F1F5F9]'
                 }`}
               >
-                Every Day
+                Every Day (7 Days/Wk)
               </button>
               <button
                 type="button"
                 onClick={() => setFrequencyType('custom')}
-                className={`py-2.5 rounded-xl font-medium text-sm border transition-all ${
+                className={`py-2 px-3 rounded-lg text-xs font-medium border transition-colors ${
                   frequencyType === 'custom'
-                    ? 'bg-brand-600/20 border-brand-500 text-brand-400 font-semibold'
-                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-750'
+                    ? 'bg-[#17212B] border-[#4F7CFF] text-[#F1F5F9]'
+                    : 'bg-[#111820] border-[#26313C] text-[#A8B3C2] hover:text-[#F1F5F9]'
                 }`}
               >
-                Custom Days
+                Custom Specific Days
               </button>
             </div>
           </div>
 
+          {/* Custom Scheduled Days */}
           {frequencyType === 'custom' && (
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Select Scheduled Days
+            <div className="p-3 bg-[#17212B] rounded-lg border border-[#26313C] space-y-2">
+              <label className="block text-xs font-medium text-[#A8B3C2]">
+                Select Active Days of Week
               </label>
               <div className="flex gap-1.5 justify-between">
                 {DAYS_OF_WEEK.map((day) => {
@@ -243,80 +346,112 @@ export const CreateHabitModal: React.FC<CreateHabitModalProps> = ({
                       key={day.value}
                       type="button"
                       onClick={() => toggleDay(day.value)}
-                      className={`w-10 h-10 rounded-xl font-semibold text-xs flex items-center justify-center transition-all ${
+                      className={`w-9 h-9 rounded-md font-medium text-xs flex items-center justify-center transition-colors ${
                         selected
-                          ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20'
-                          : 'bg-slate-800 text-slate-500 border border-slate-700 hover:text-slate-300'
+                          ? 'bg-[#4F7CFF] text-white'
+                          : 'bg-[#111820] text-[#718096] border border-[#26313C] hover:text-[#A8B3C2]'
                       }`}
+                      aria-label={`Toggle ${day.label}`}
                     >
                       {day.label}
                     </button>
                   );
                 })}
               </div>
+              {fieldErrors.daysOfWeek && (
+                <p className="text-xs text-[#F85149] mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{fieldErrors.daysOfWeek}</span>
+                </p>
+              )}
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* Target Count & Unit */}
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Target Count
+              <label htmlFor="habit-target-count" className="block text-xs font-medium text-[#A8B3C2] mb-1">
+                Target Quantity <span className="text-[#F85149]">*</span>
               </label>
               <input
+                id="habit-target-count"
                 type="number"
                 min="1"
                 value={targetCount}
-                onChange={(e) => setTargetCount(parseInt(e.target.value) || 1)}
-                className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-brand-500 text-sm"
+                onChange={(e) => {
+                  const val = parseInt(e.target.value) || 0;
+                  setTargetCount(val);
+                  if (val >= 1) setFieldErrors((prev) => ({ ...prev, targetCount: undefined }));
+                }}
+                className={`w-full saas-input ${
+                  fieldErrors.targetCount ? 'border-[#F85149]' : ''
+                }`}
+                aria-invalid={!!fieldErrors.targetCount}
               />
+              {fieldErrors.targetCount && (
+                <p className="text-xs text-[#F85149] mt-1">{fieldErrors.targetCount}</p>
+              )}
             </div>
+
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+              <label htmlFor="habit-target-unit" className="block text-xs font-medium text-[#A8B3C2] mb-1">
                 Unit
               </label>
               <input
+                id="habit-target-unit"
                 type="text"
-                placeholder="pages, liters, times"
+                placeholder="times, liters, pages"
                 value={targetUnit}
                 onChange={(e) => setTargetUnit(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-brand-500 text-sm"
+                className="w-full saas-input"
               />
             </div>
           </div>
 
+          {/* Color Accent Picker */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-              Color Accent
+            <label className="block text-xs font-medium text-[#A8B3C2] mb-2">
+              Card Color Accent
             </label>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               {COLOR_PALETTE.map((c) => (
                 <button
                   key={c}
                   type="button"
                   onClick={() => setColor(c)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center transition-transform hover:scale-110 cursor-pointer"
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform cursor-pointer ${
+                    color === c ? 'ring-2 ring-white ring-offset-2 ring-offset-[#111820] scale-105' : ''
+                  }`}
                   style={{ backgroundColor: c }}
+                  aria-label={`Select accent color ${c}`}
                 >
-                  {color === c && <Check className="w-4 h-4 text-white stroke-[3]" />}
+                  {color === c && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+          {/* Submit Actions */}
+          <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2 pt-4 border-t border-[#26313C]">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-xl font-medium text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="w-full sm:w-auto saas-button-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2.5 rounded-xl font-semibold text-sm bg-brand-600 hover:bg-brand-500 text-white shadow-lg shadow-brand-500/25 transition-all disabled:opacity-50"
+              className="w-full sm:w-auto saas-button-primary"
             >
-              {loading ? 'Saving...' : editingHabit ? 'Update Habit' : 'Create Habit'}
+              {loading ? (
+                <span>Saving Routine...</span>
+              ) : editingHabit ? (
+                <span>Update Habit</span>
+              ) : (
+                <span>Create Habit</span>
+              )}
             </button>
           </div>
         </form>

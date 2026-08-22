@@ -8,21 +8,35 @@ export default {
   theme: {
     extend: {
       colors: {
+        app: {
+          bg: '#0B0F14',
+          surface: '#111820',
+          elevated: '#17212B',
+          border: '#26313C',
+          text: '#F1F5F9',
+          secondary: '#A8B3C2',
+          muted: '#718096',
+          accent: '#4F7CFF',
+          'accent-hover': '#4169E1',
+          success: '#3FB950',
+          warning: '#D29922',
+          danger: '#F85149',
+        },
         brand: {
-          50: '#f0f6ff',
-          100: '#e0edff',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
+          50: '#F1F5F9',
+          100: '#A8B3C2',
+          500: '#4F7CFF',
+          600: '#4169E1',
+          700: '#3859C7',
         },
         slate: {
-          850: '#151e2e',
-          900: '#0f172a',
-          950: '#090d16',
+          850: '#17212B',
+          900: '#111820',
+          950: '#0B0F14',
         }
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
       }
     },
   },

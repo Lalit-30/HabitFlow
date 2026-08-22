@@ -3,32 +3,130 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    color-scheme: dark;
+  }
   body {
-    @apply bg-slate-950 text-slate-100 min-h-screen overflow-x-hidden;
+    @apply bg-[#0B0F14] text-[#F1F5F9] min-h-screen overflow-x-hidden antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }
 
-/* Glassmorphism Card Style */
+/* Reduced Motion Accessibility Rule */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Professional SaaS Surface System */
+.saas-panel {
+  @apply bg-[#111820] border border-[#26313C] rounded-xl transition-colors duration-150;
+}
+
+.saas-card {
+  @apply bg-[#17212B] border border-[#26313C] rounded-lg transition-colors duration-150;
+}
+
+/* Deprecated glass aliases for clean backwards compatibility */
 .glass-panel {
-  @apply bg-slate-900/80 backdrop-blur-md border border-slate-800/80 rounded-2xl shadow-xl;
+  @apply bg-[#111820] border border-[#26313C] rounded-xl transition-all duration-150;
 }
 
 .glass-card {
-  @apply bg-slate-850/60 hover:bg-slate-850/90 border border-slate-800/60 transition-all duration-200 rounded-xl;
+  @apply bg-[#17212B] border border-[#26313C] rounded-lg transition-all duration-150;
+}
+
+/* Form Inputs */
+.saas-input {
+  @apply bg-[#111820] border border-[#26313C] focus:border-[#4F7CFF] text-[#F1F5F9] placeholder-[#718096] rounded-lg text-sm transition-colors duration-150 outline-none px-3.5 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+/* Button System */
+.saas-button-primary {
+  @apply bg-[#4F7CFF] hover:bg-[#4169E1] active:bg-[#3859C7] text-white font-medium rounded-lg text-sm px-4 py-2.5 transition-colors duration-150 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#4F7CFF]/50;
+}
+
+.saas-button-secondary {
+  @apply bg-[#17212B] hover:bg-[#1F2B38] border border-[#26313C] text-[#F1F5F9] font-medium rounded-lg text-sm px-4 py-2.5 transition-colors duration-150 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#4F7CFF]/30;
+}
+
+.saas-button-danger {
+  @apply bg-[#F85149]/10 hover:bg-[#F85149]/20 border border-[#F85149]/30 text-[#F85149] font-medium rounded-lg text-sm px-4 py-2.5 transition-colors duration-150 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#F85149]/40;
+}
+
+.saas-button-ghost {
+  @apply text-[#A8B3C2] hover:text-[#F1F5F9] hover:bg-[#17212B] rounded-lg text-sm px-3 py-2 transition-colors duration-150 flex items-center justify-center gap-2 focus:outline-none;
+}
+
+/* Touch Target Accessibility Utility */
+.touch-target {
+  @apply min-h-[44px] min-w-[44px] flex items-center justify-center select-none active:scale-[0.98] transition-transform;
+}
+
+/* Smooth Horizontal Scroll Snap for Mobile Chips */
+.mobile-chip-scroll {
+  @apply flex items-center gap-2 overflow-x-auto pb-1 pt-1 snap-x snap-mandatory;
+}
+.mobile-chip-scroll > * {
+  @apply snap-start shrink-0;
+}
+
+/* Restrained Micro-Interaction Keyframes */
+@keyframes checkPop {
+  0% { transform: scale(0.85); }
+  50% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes modalEnter {
+  from { opacity: 0; transform: translateY(6px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes toastEnter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-checkPop {
+  animation: checkPop 0.18s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-pageEnter {
+  animation: pageEnter 0.15s ease-out forwards;
+}
+
+.animate-modalEnter {
+  animation: modalEnter 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-toastEnter {
+  animation: toastEnter 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #090d16;
+  background: #0B0F14;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #26313C;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #3A4959;
 }

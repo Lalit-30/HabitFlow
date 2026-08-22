@@ -26,15 +26,15 @@ class ForgotPasswordRequest(BaseModel):
 
 class UserProfileUpdateRequest(BaseModel):
     full_name: Optional[str] = Field(None, min_length=1, max_length=100)
-    avatar_url: Optional[str] = None
+    avatar_url: Optional[str] = Field(None, max_length=500)
     age: Optional[int] = Field(None, ge=1, le=120)
     dob: Optional[date] = None
-    gender: Optional[str] = None
-    city: Optional[str] = None
-    country: Optional[str] = None
+    gender: Optional[str] = Field(None, max_length=50)
+    city: Optional[str] = Field(None, max_length=100)
+    country: Optional[str] = Field(None, max_length=100)
     height: Optional[float] = Field(None, ge=30.0, le=300.0)
     weight: Optional[float] = Field(None, ge=10.0, le=500.0)
-    health_goal: Optional[str] = None
+    health_goal: Optional[str] = Field(None, max_length=250)
 
 
 class AdminUserCreateRequest(BaseModel):

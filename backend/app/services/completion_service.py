@@ -44,16 +44,18 @@ class CompletionService:
             notes=request.notes
         )
 
-        if is_first_completion:
-            # Award +10 XP to user
-            user = UserRepository.get_by_id(db, user_id)
-            if user:
-                user.xp += 10
-                # Calculate level: Level = floor(sqrt(XP / 50)) + 1
-                user.level = int((user.xp / 50) ** 0.5) + 1
-                db.commit()
+        user = UserRepository.get_by_id(db, user_id)
+        if is_first_completion and user:
+            user.xp += 10
+            # Calculate level: Level = floor(sqrt(XP / 50)) + 1
+            user.level = int((user.xp / 50) ** 0.5) + 1
+            db.commit()
 
-        return HabitCompletionResponse.model_validate(completion)
+        resp = HabitCompletionResponse.model_validate(completion)
+        if user:
+            resp.user_xp = user.xp
+            resp.user_level = user.level
+        return resp
 
     @staticmethod
     def delete_completion(

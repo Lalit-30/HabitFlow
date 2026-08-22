@@ -43,27 +43,8 @@ class AuthService:
         clean_email = request.email.strip().lower()
         user = UserRepository.get_by_email(db, clean_email)
 
-        # Auto-healing for admin@habitflow.com account
-        if clean_email == "admin@habitflow.com":
-            if not user:
-                user = User(
-                    email="admin@habitflow.com",
-                    hashed_password=get_password_hash(request.password),
-                    full_name="System Administrator",
-                    is_admin=True,
-                    is_active=True
-                )
-                db.add(user)
-                db.commit()
-                db.refresh(user)
-            else:
-                user.hashed_password = get_password_hash(request.password)
-                user.is_admin = True
-                user.is_active = True
-                db.commit()
-
-        # Strict credentials verification for regular users
-        elif not user or not verify_password(request.password, user.hashed_password):
+        # Credentials verification for all accounts
+        if not user or not verify_password(request.password, user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email or password. Please check your credentials or register first.",

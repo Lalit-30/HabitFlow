@@ -75,28 +75,26 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Global Exception Handler returning detailed error JSON instead of generic 500 HTML
+# Global Exception Handler returning sanitized error JSON without exposing internal tracebacks
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     print(f"[ERROR] Global Exception Captured: {exc}")
     return JSONResponse(
         status_code=500,
-        content={"detail": f"Server error: {str(exc)}"}
+        content={"detail": "An unexpected server error occurred. Please try again later."}
     )
 
-# Configure CORS Middleware
+# Configure CORS Middleware using application settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include API v1 router with multiple prefix variants for Vercel Serverless & Local Uvicorn compatibility
+# Include API v1 router
 app.include_router(api_router, prefix="/api/v1")
-app.include_router(api_router, prefix="/v1")
-app.include_router(api_router, prefix="")
 
 
 @app.get("/", tags=["system"])
